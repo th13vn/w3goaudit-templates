@@ -1,5 +1,5 @@
 meta:
-  id: SEC-DELEG-002
+  id: HIGH-DELEGATECALL-IN-LOOP
   title: "Delegatecall Inside a Loop"
   severity: HIGH
   confidence: MEDIUM

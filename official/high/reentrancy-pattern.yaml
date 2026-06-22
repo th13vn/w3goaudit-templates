@@ -1,5 +1,5 @@
 meta:
-  id: SEC-GEN-REENTRANCY
+  id: HIGH-REENTRANCY-PATTERN
   title: Potential Reentrancy - State Variable Modification
   severity: HIGH
   confidence: MEDIUM

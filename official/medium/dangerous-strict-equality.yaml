@@ -1,5 +1,5 @@
 meta:
-  id: SEC-EQ-001
+  id: MEDIUM-DANGEROUS-STRICT-EQUALITY
   title: "Dangerous Strict Equality on Externally-Influenced Balance"
   severity: MEDIUM
   confidence: HIGH

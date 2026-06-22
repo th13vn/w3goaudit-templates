@@ -1,5 +1,5 @@
 meta:
-  id: SEC-MUTABILITY-001
+  id: MEDIUM-VIEW-PURE-MODIFIES-STATE
   title: "view/pure Function Modifies State"
   severity: MEDIUM
   confidence: HIGH

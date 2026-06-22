@@ -26,19 +26,23 @@ Read it before writing a rule.
 
 | Field | Required | Notes |
 | --- | --- | --- |
-| `id` | yes | Stable, unique. Format `SEC-<CATEGORY>-NNN` (e.g. `SEC-REENTRANCY-002`). Never reuse an id for a different rule. |
+| `id` | yes | Stable, unique. Format `<SEVERITY>-<FILENAME>` — the upper-cased file name (e.g. `HIGH-REENTRANCY-BALANCE` for `high/reentrancy-balance.yaml`). Never reuse an id for a different rule. |
 | `title` | yes | Short, specific, human-readable. |
 | `severity` | yes | One of `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`. |
 | `confidence` | yes | One of `HIGH`, `MEDIUM`, `LOW`. |
-| `description` | yes | What the pattern is and why it is dangerous. |
-| `recommendation` | yes | Concrete, actionable remediation. |
-| `cwe` | recommended | CWE identifier(s) if applicable. |
-| `owasp` | recommended | **OWASP Smart Contract Top 10 (2025)** category (e.g. `SC05:2025`). |
-| `references` | optional | SWC / best-practice / advisory links. |
+| `description` | recommended | What the pattern is and why it is dangerous. |
+| `recommendation` | recommended | Concrete, actionable remediation. |
+| `references` | optional | SWC / best-practice / advisory links (engine propagates these to findings). |
+| `fix` | optional | Short one-line fix summary, surfaced alongside `recommendation`. |
 
-Severity and confidence definitions and the OWASP SC Top 10 (2025) mapping are
-in [`docs/severity-taxonomy.md`](./docs/severity-taxonomy.md). Classify against
-that smart-contract taxonomy — do **not** invent ad-hoc categories.
+> **No `cwe` / `owasp` fields:** the engine does not parse or emit dedicated
+> `cwe`/`owasp` meta fields — they are silently ignored. Record any CWE / OWASP
+> SC Top 10 classification as a `references` entry instead.
+
+Severity and confidence definitions and the (advisory) OWASP SC Top 10 (2025)
+mapping are in [`docs/severity-taxonomy.md`](./docs/severity-taxonomy.md).
+Classify against that smart-contract taxonomy — do **not** invent ad-hoc
+categories.
 
 ---
 
@@ -48,8 +52,10 @@ This is the most important authoring concept. The two layers serve different
 purposes and must not be conflated:
 
 - **`filter:`** expresses **function/contract preconditions** — *which*
-  functions or contracts are eligible at all. Filters are typically presets:
-  `unAuthenticated`, `unLocked` (no reentrancy guard), `entrypoint` scope, etc.
+  functions or contracts are eligible at all. Filters are often presets — the
+  three built-ins are `unAuthenticated` (no privileged access control),
+  `unCheckedSender` (no privileged auth and no caller self-scoping), and
+  `unLocked` (no reentrancy guard) — combined with the query `scope`.
   A filter answers "is this the kind of function where the bug could matter?"
 
 - **`match:`** expresses the **AST pattern** that, if found inside a filtered
@@ -90,7 +96,7 @@ Run the engine locally against your fixtures:
 ```bash
 w3goaudit ./path/to/fixtures/ --template ./official/
 # or target a single rule:
-w3goaudit ./path/to/fixtures/ --template ./official/your-rule.yaml
+w3goaudit ./path/to/fixtures/ --template ./official/high/your-rule.yaml
 ```
 
 Prefer tightening a rule to eliminate a false-positive class over broadening it
@@ -103,9 +109,12 @@ comment inside the rule (see `reentrancy-pattern.yaml` for an example).
 
 - **File name:** lowercase, hyphen-separated, descriptive of the pattern, e.g.
   `delegatecall-user-input.yaml`, `unchecked-erc20-transfer.yaml`.
-- **`meta.id`:** `SEC-<CATEGORY>-NNN`. Pick a category prefix consistent with
-  existing rules (`DELEG`, `REENTRANCY`, `MATH`, `ERC20`, `PRNG`, …). Introduce
-  a new prefix only when no existing one fits.
+- **Folder:** place the file under `official/<severity>/` matching its
+  `meta.severity` — `critical/`, `high/`, or `medium/`.
+- **`meta.id`:** `<SEVERITY>-<FILENAME>` — the severity followed by the
+  upper-cased file name (hyphens kept), e.g. `high/delegatecall-in-loop.yaml`
+  → `HIGH-DELEGATECALL-IN-LOOP`. The id must stay in sync with both the file
+  name and the folder.
 - One vulnerability pattern per file.
 
 ---
@@ -117,8 +126,9 @@ comment inside the rule (see `reentrancy-pattern.yaml` for an example).
 3. Include your vulnerable + safe fixtures (or describe them in the PR) and the
    command output showing the rule fires/does-not-fire as intended.
 4. Update the category table in `README.md` and add a `CHANGELOG.md` entry.
-5. Open a PR describing the pattern, severity/confidence rationale, and the
-   OWASP SC Top 10 (2025) category.
+5. Open a PR describing the pattern and the severity/confidence rationale
+   (noting the OWASP SC Top 10 (2025) category for context, even though it is
+   not an emitted field).
 6. A maintainer reviews for correctness, false-positive risk, taxonomy
    accuracy, and naming. Tuning of severity/confidence may be requested before
    merge.

@@ -1,5 +1,5 @@
 meta:
-  id: SEC-MSGVAL-001
+  id: HIGH-MSG-VALUE-IN-LOOP
   title: "msg.value Used Inside a Loop"
   severity: HIGH
   confidence: MEDIUM

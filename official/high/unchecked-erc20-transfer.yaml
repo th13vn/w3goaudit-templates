@@ -1,5 +1,5 @@
 meta:
-  id: SEC-ERC20-002
+  id: HIGH-UNCHECKED-ERC20-TRANSFER
   title: "Unchecked ERC20 transfer / transferFrom Return Value"
   severity: HIGH
   confidence: MEDIUM

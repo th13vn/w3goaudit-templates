@@ -1,5 +1,5 @@
 meta:
-  id: SEC-ETH-001
+  id: HIGH-ARBITRARY-SEND-ETH
   title: "Unprotected ETH Withdrawal"
   severity: HIGH
   confidence: MEDIUM

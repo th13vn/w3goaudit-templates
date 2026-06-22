@@ -1,9 +1,15 @@
 # Severity, Confidence & OWASP SC Top 10 (2025) Taxonomy
 
-Every official template classifies its finding along three axes: **severity**
-(impact), **confidence** (precision of the rule), and an **OWASP Smart Contract
-Top 10 (2025)** category. This document is the authoritative reference for all
-three.
+Every official template classifies its finding along two **emitted** axes:
+**severity** (impact) and **confidence** (precision of the rule). Both are real
+`meta` fields the engine reads and reports. This document is the authoritative
+reference for choosing them.
+
+It also gives an **OWASP Smart Contract Top 10 (2025)** mapping as an authoring
+aid. Note up front: the engine does **not** emit a dedicated `owasp` (or `cwe`)
+field today — see [§3](#3-owasp-smart-contract-top-10-2025-mapping). Treat the
+OWASP mapping as guidance for reasoning about a rule and for any `references`
+link, not as a field the scanner outputs.
 
 ---
 
@@ -41,8 +47,15 @@ means "definitely present, moderate impact."
 
 ## 3. OWASP Smart Contract Top 10 (2025) mapping
 
-Templates classify their `owasp` field against the **OWASP Smart Contract Top 10
-(2025)** — the smart-contract-specific taxonomy, *not* the general web Top 10.
+> **No emitted field yet.** The engine's template `meta` struct has no `owasp`
+> or `cwe` field — both are silently ignored if added to a YAML file, and none
+> of the official templates use them. This table is therefore an **authoring
+> aid**: use it to reason about what a rule detects and to pick a `references`
+> link, not as a field the scanner outputs. If/when dedicated classification
+> fields land in the engine, this section becomes their reference.
+
+The mapping below is against the **OWASP Smart Contract Top 10 (2025)** — the
+smart-contract-specific taxonomy, *not* the general web Top 10.
 
 | Code | Category | Representative official templates |
 | --- | --- | --- |
@@ -62,8 +75,9 @@ risk the rule detects. Signature malleability, `tx.origin` authentication, and
 hash-collision-via-`encodePacked` are commonly classified under access control
 (`SC01`) or logic errors (`SC02`) depending on how they are abused.
 
-> The `cwe` field (e.g. `CWE-841`, `CWE-829`, `CWE-682`) is complementary and
-> may be set alongside `owasp` for tooling that consumes CWE identifiers.
+> A CWE identifier (e.g. `CWE-841`, `CWE-829`, `CWE-682`) is complementary to
+> the OWASP category. Like `owasp`, there is no emitted `cwe` field today —
+> record it as a `references` entry if useful.
 
 ---
 
@@ -75,7 +89,10 @@ hash-collision-via-`encodePacked` are commonly classified under access control
 2. **Confidence** — how often will the pattern fire on safe code? Precise AST +
    dataflow constraint → `HIGH`; heuristic shape → `MEDIUM`; deliberately broad
    → `LOW`.
-3. **OWASP** — map to the single primary SC Top 10 (2025) category above.
+3. **OWASP / CWE (optional, advisory)** — note the primary SC Top 10 (2025)
+   category above for your own reasoning; if a canonical advisory exists, add it
+   as a `references` link. These are not emitted fields.
 
-When in doubt, prefer the more conservative severity and the lower confidence,
-and document the rationale in the PR.
+Only `severity` and `confidence` are emitted. When in doubt, prefer the more
+conservative severity and the lower confidence, and document the rationale in
+the PR.

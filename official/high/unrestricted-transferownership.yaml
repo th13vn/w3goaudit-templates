@@ -1,5 +1,5 @@
 meta:
-  id: SEC-OWNER-001
+  id: HIGH-UNRESTRICTED-TRANSFEROWNERSHIP
   title: "Unrestricted transferOwnership"
   severity: HIGH
   confidence: MEDIUM

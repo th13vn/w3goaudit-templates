@@ -1,5 +1,5 @@
 meta:
-  id: SEC-MATH-001
+  id: MEDIUM-UNCHECKED-ARITHMETIC
   title: Arithmetic in Unchecked Block (Potential Overflow)
   severity: MEDIUM
   confidence: HIGH

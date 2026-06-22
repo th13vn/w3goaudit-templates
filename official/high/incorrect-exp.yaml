@@ -1,5 +1,5 @@
 meta:
-  id: SEC-MATH-003
+  id: HIGH-INCORRECT-EXP
   title: "Suspicious Use of ^ (Bitwise XOR, Likely Meant **)"
   severity: HIGH
   confidence: MEDIUM

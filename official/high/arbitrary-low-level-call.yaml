@@ -1,5 +1,5 @@
 meta:
-  id: SEC-CALL-001
+  id: HIGH-ARBITRARY-LOW-LEVEL-CALL
   title: "Arbitrary Low-Level Call (User-Controlled Target and Calldata)"
   severity: HIGH
   confidence: MEDIUM

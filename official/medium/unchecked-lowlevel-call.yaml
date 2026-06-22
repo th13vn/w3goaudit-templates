@@ -1,5 +1,5 @@
 meta:
-  id: SEC-LOWLEVEL-CALL-001
+  id: MEDIUM-UNCHECKED-LOWLEVEL-CALL
   title: "Unchecked Low-Level Call Return Value"
   severity: MEDIUM
   confidence: MEDIUM

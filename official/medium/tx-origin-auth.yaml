@@ -1,5 +1,5 @@
 meta:
-  id: SEC-TXORIGIN-001
+  id: MEDIUM-TX-ORIGIN-AUTH
   title: tx.origin Used for Authentication
   severity: MEDIUM
   confidence: HIGH

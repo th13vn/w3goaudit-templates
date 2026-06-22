@@ -1,5 +1,5 @@
 meta:
-  id: SEC-UPGRADE-001
+  id: HIGH-UNPROTECTED-INITIALIZER
   title: "Unprotected Initializer (Anyone Can Become Owner)"
   severity: HIGH
   confidence: HIGH

@@ -1,5 +1,5 @@
 meta:
-  id: SEC-HASH-001
+  id: HIGH-ENCODE-PACKED-COLLISION
   title: "Hash Collision via abi.encodePacked with Multiple Dynamic Arguments"
   severity: HIGH
   confidence: MEDIUM

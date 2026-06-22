@@ -1,5 +1,5 @@
 meta:
-  id: SEC-MATH-002
+  id: MEDIUM-DIVIDE-BEFORE-MULTIPLY
   title: "Division Before Multiplication (Precision Loss)"
   severity: MEDIUM
   confidence: HIGH

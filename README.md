@@ -39,9 +39,13 @@ home:
 
 ```
 ~/.w3goaudit/templates/
-├── official/            # the rule pack from this repo
-│   ├── reentrancy-pattern.yaml
-│   ├── delegatecall-user-input.yaml
+├── official/            # the rule pack from this repo (split by severity)
+│   ├── critical/
+│   │   └── delegatecall-user-input.yaml
+│   ├── high/
+│   │   └── reentrancy-pattern.yaml
+│   ├── medium/
+│   │   └── ...
 │   └── ...
 └── .version             # the release tag currently installed (e.g. v1.0.0)
 ```
@@ -66,7 +70,9 @@ already matches the latest release, the update is a no-op.
 ```
 w3goaudit-templates/
 ├── official/            # production rule pack (downloaded to the template home)
-│   └── *.yaml
+│   ├── critical/        # CRITICAL-severity rules
+│   ├── high/            # HIGH-severity rules
+│   └── medium/          # MEDIUM-severity rules
 ├── docs/                # WQL authoring reference
 │   ├── template-format.md
 │   └── severity-taxonomy.md
@@ -82,7 +88,7 @@ w3goaudit-templates/
 
 ```yaml
 meta:
-  id: SEC-DELEG-001
+  id: CRITICAL-DELEGATECALL-USER-INPUT
   title: Delegatecall to User-Controlled Address
   severity: CRITICAL
   confidence: HIGH
@@ -139,9 +145,10 @@ See [`docs/template-format.md`](./docs/template-format.md) for the full anatomy.
 | `MEDIUM` | Heuristic pattern; manual confirmation recommended |
 | `LOW` | Broad pattern; expect to triage false positives |
 
-Vulnerability classification follows the **OWASP Smart Contract Top 10 (2025)**
-taxonomy. See [`docs/severity-taxonomy.md`](./docs/severity-taxonomy.md) for the
-full mapping.
+`severity` and `confidence` are the only classification fields the engine emits.
+For authoring, templates are also reasoned about against the **OWASP Smart
+Contract Top 10 (2025)** taxonomy — an advisory mapping, not an emitted field.
+See [`docs/severity-taxonomy.md`](./docs/severity-taxonomy.md) for both.
 
 ---
 
@@ -151,31 +158,31 @@ The current pack contains **25** official templates:
 
 | ID | Title | Severity | Confidence |
 | --- | --- | --- | --- |
-| SEC-DELEG-001 | Delegatecall to User-Controlled Address | CRITICAL | HIGH |
-| SEC-DEST-001 | Unprotected selfdestruct | CRITICAL | HIGH |
-| SEC-CALL-001 | Arbitrary Low-Level Call (User-Controlled Target & Calldata) | HIGH | MEDIUM |
-| SEC-ETH-001 | Unprotected ETH Withdrawal | HIGH | MEDIUM |
-| SEC-ERC20-001 | Arbitrary transferFrom Call | HIGH | MEDIUM |
-| SEC-DELEG-002 | Delegatecall Inside a Loop | HIGH | MEDIUM |
-| SEC-SIG-001 | Signature Malleability: Raw Signature Bytes as State Key | HIGH | MEDIUM |
-| SEC-HASH-001 | Hash Collision via abi.encodePacked (Multiple Dynamic Args) | HIGH | MEDIUM |
-| SEC-MATH-003 | Suspicious Use of `^` (Bitwise XOR, Likely Meant `**`) | HIGH | MEDIUM |
-| SEC-MSGVAL-001 | msg.value Used Inside a Loop | HIGH | MEDIUM |
-| SEC-PROXY-001 | Proxy Storage Layout Collision | HIGH | MEDIUM |
-| SEC-REENTRANCY-002 | Reentrancy via balanceOf Delta (Stale Snapshot) | HIGH | MEDIUM |
-| SEC-GEN-REENTRANCY | Potential Reentrancy — State Variable Modification | HIGH | MEDIUM |
-| SEC-ERC20-002 | Unchecked ERC20 transfer / transferFrom Return Value | HIGH | MEDIUM |
-| SEC-UPGRADE-001 | Unprotected Initializer (Anyone Can Become Owner) | HIGH | HIGH |
-| SEC-OWNER-001 | Unrestricted transferOwnership | HIGH | MEDIUM |
-| SEC-PRNG-001 | Weak Randomness from Block Variables | HIGH | MEDIUM |
-| SEC-BOOL-001 | Boolean Constant Misuse | MEDIUM | MEDIUM |
-| SEC-EQ-001 | Dangerous Strict Equality on Externally-Influenced Balance | MEDIUM | HIGH |
-| SEC-MATH-002 | Division Before Multiplication (Precision Loss) | MEDIUM | HIGH |
-| SEC-TXORIGIN-001 | tx.origin Used for Authentication | MEDIUM | HIGH |
-| SEC-MATH-001 | Arithmetic in Unchecked Block (Potential Overflow) | MEDIUM | HIGH |
-| SEC-LOWLEVEL-CALL-001 | Unchecked Low-Level Call Return Value | MEDIUM | MEDIUM |
-| SEC-SEND-001 | Unchecked send() Return Value | MEDIUM | HIGH |
-| SEC-MUTABILITY-001 | view/pure Function Modifies State | MEDIUM | HIGH |
+| CRITICAL-DELEGATECALL-USER-INPUT | Delegatecall to User-Controlled Address | CRITICAL | HIGH |
+| CRITICAL-SELFDESTRUCT-UNPROTECTED | Unprotected selfdestruct | CRITICAL | HIGH |
+| HIGH-ARBITRARY-LOW-LEVEL-CALL | Arbitrary Low-Level Call (User-Controlled Target & Calldata) | HIGH | MEDIUM |
+| HIGH-ARBITRARY-SEND-ETH | Unprotected ETH Withdrawal | HIGH | MEDIUM |
+| HIGH-ARBITRARY-TRANSFERFROM | Arbitrary transferFrom Call | HIGH | MEDIUM |
+| HIGH-DELEGATECALL-IN-LOOP | Delegatecall Inside a Loop | HIGH | MEDIUM |
+| HIGH-ECDSA-RECOVER-MALLEABLE | Signature Malleability: Raw Signature Bytes as State Key | HIGH | MEDIUM |
+| HIGH-ENCODE-PACKED-COLLISION | Hash Collision via abi.encodePacked (Multiple Dynamic Args) | HIGH | MEDIUM |
+| HIGH-INCORRECT-EXP | Suspicious Use of `^` (Bitwise XOR, Likely Meant `**`) | HIGH | MEDIUM |
+| HIGH-MSG-VALUE-IN-LOOP | msg.value Used Inside a Loop | HIGH | MEDIUM |
+| HIGH-PROXY-STORAGE-COLLISION | Proxy Storage Layout Collision | HIGH | MEDIUM |
+| HIGH-REENTRANCY-BALANCE | Reentrancy via balanceOf Delta (Stale Snapshot) | HIGH | MEDIUM |
+| HIGH-REENTRANCY-PATTERN | Potential Reentrancy — State Variable Modification | HIGH | MEDIUM |
+| HIGH-UNCHECKED-ERC20-TRANSFER | Unchecked ERC20 transfer / transferFrom Return Value | HIGH | MEDIUM |
+| HIGH-UNPROTECTED-INITIALIZER | Unprotected Initializer (Anyone Can Become Owner) | HIGH | HIGH |
+| HIGH-UNRESTRICTED-TRANSFEROWNERSHIP | Unrestricted transferOwnership | HIGH | MEDIUM |
+| HIGH-WEAK-PRNG | Weak Randomness from Block Variables | HIGH | MEDIUM |
+| MEDIUM-BOOLEAN-CST | Boolean Constant Misuse | MEDIUM | MEDIUM |
+| MEDIUM-DANGEROUS-STRICT-EQUALITY | Dangerous Strict Equality on Externally-Influenced Balance | MEDIUM | HIGH |
+| MEDIUM-DIVIDE-BEFORE-MULTIPLY | Division Before Multiplication (Precision Loss) | MEDIUM | HIGH |
+| MEDIUM-TX-ORIGIN-AUTH | tx.origin Used for Authentication | MEDIUM | HIGH |
+| MEDIUM-UNCHECKED-ARITHMETIC | Arithmetic in Unchecked Block (Potential Overflow) | MEDIUM | HIGH |
+| MEDIUM-UNCHECKED-LOWLEVEL-CALL | Unchecked Low-Level Call Return Value | MEDIUM | MEDIUM |
+| MEDIUM-UNCHECKED-SEND | Unchecked send() Return Value | MEDIUM | HIGH |
+| MEDIUM-VIEW-PURE-MODIFIES-STATE | view/pure Function Modifies State | MEDIUM | HIGH |
 
 ---
 

@@ -1,5 +1,5 @@
 meta:
-  id: SEC-REENTRANCY-002
+  id: HIGH-REENTRANCY-BALANCE
   title: "Reentrancy via balanceOf Delta (Stale Snapshot)"
   severity: HIGH
   confidence: MEDIUM

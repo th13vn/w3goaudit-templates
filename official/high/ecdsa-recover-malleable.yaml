@@ -1,5 +1,5 @@
 meta:
-  id: SEC-SIG-001
+  id: HIGH-ECDSA-RECOVER-MALLEABLE
   title: "Signature Malleability: Raw Signature Bytes Used as a State Key"
   severity: HIGH
   confidence: MEDIUM

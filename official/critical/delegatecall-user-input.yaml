@@ -1,5 +1,5 @@
 meta:
-  id: SEC-DELEG-001
+  id: CRITICAL-DELEGATECALL-USER-INPUT
   title: Delegatecall to User-Controlled Address
   severity: CRITICAL
   confidence: HIGH

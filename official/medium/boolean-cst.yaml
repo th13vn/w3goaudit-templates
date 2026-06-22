@@ -1,5 +1,5 @@
 meta:
-  id: SEC-BOOL-001
+  id: MEDIUM-BOOLEAN-CST
   title: "Boolean Constant Misuse"
   severity: MEDIUM
   confidence: MEDIUM

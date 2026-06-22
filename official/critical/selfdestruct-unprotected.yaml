@@ -1,5 +1,5 @@
 meta:
-  id: SEC-DEST-001
+  id: CRITICAL-SELFDESTRUCT-UNPROTECTED
   title: Unprotected selfdestruct
   severity: CRITICAL
   confidence: HIGH

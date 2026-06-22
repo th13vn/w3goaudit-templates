@@ -1,5 +1,5 @@
 meta:
-  id: SEC-ERC20-001
+  id: HIGH-ARBITRARY-TRANSFERFROM
   title: "Arbitrary transferFrom Call"
   severity: HIGH
   confidence: MEDIUM

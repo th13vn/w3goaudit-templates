@@ -1,5 +1,5 @@
 meta:
-  id: SEC-PRNG-001
+  id: HIGH-WEAK-PRNG
   title: "Weak Randomness from Block Variables"
   severity: HIGH
   confidence: MEDIUM

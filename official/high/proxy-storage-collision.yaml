@@ -1,5 +1,5 @@
 meta:
-  id: SEC-PROXY-001
+  id: HIGH-PROXY-STORAGE-COLLISION
   title: "Proxy Storage Layout Collision"
   severity: HIGH
   confidence: MEDIUM

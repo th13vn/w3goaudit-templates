@@ -1,5 +1,5 @@
 meta:
-  id: SEC-SEND-001
+  id: MEDIUM-UNCHECKED-SEND
   title: "Unchecked send() Return Value"
   severity: MEDIUM
   confidence: HIGH
