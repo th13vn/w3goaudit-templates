@@ -9,8 +9,8 @@ Official **WQL** (w3goaudit Query Language) security templates for
 for Solidity smart contracts.
 
 This repository is the canonical, versioned home of the official template pack.
-Each template is a YAML rule that describes a vulnerability pattern in terms of
-function/contract preconditions (`filter`) and an AST match (`match`). The
+Each template is a YAML rule that describes a vulnerability pattern with a
+`select` / `from` / `where` query (or an `and:` / `or:` composition). The
 `w3goaudit` binary downloads this repo's latest GitHub Release and extracts it
 into the user's template home so the engine always runs an up-to-date rule set.
 
@@ -103,27 +103,23 @@ meta:
     - https://swcregistry.io/docs/SWC-112
 
 query:
-  scope: entrypoint
-
-  filter:
-    preset: unAuthenticated      # function/contract precondition
-
-  match:                          # AST pattern that must be present
-    contains:
-      kind: delegatecall
-      contains:
-        kind: expr.identifier
-        attr:
-          call_receiver: true
-        tainted_from: parameter
+  from: entry_function            # scope to search (default: entry_function)
+  select: delegatecall            # the block kind whose match anchors the finding
+  where:                          # matchers; siblings are implicit AND
+    - not: { preset: access_controlled }   # function has no privileged auth
+    - has:                                  # ...and its receiver is user-controlled
+        receiver: true
+        tainted: user_controlled
 ```
 
-The two-layer model is central:
+The `select` / `from` / `where` model:
 
-- **`filter:`** narrows *which functions/contracts* are even considered (e.g.
-  "unauthenticated entrypoints", "missing reentrancy guard").
-- **`match:`** is the AST pattern that, if found inside a filtered function,
-  produces a finding.
+- **`from:`** picks the scope to iterate (entry functions, contracts, source).
+- **`select:`** names the block kind whose matched node anchors the finding
+  (optional when a `sequence:` / `has:` / root matcher already anchors).
+- **`where:`** is one flat list mixing function/contract preconditions (presets,
+  `func_name`, `modifier`, …) and AST code shapes; the engine routes each matcher
+  to the right layer. Express a property's absence with `not: { preset: ... }`.
 
 See [`docs/template-format.md`](./docs/template-format.md) for the full anatomy.
 
@@ -203,7 +199,7 @@ The current pack contains **25** official templates:
 ## Contributing
 
 New rules and tuning are welcome. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) for
-the required `meta` fields, the `filter`-vs-`match` layering rule, testing
+the required `meta` fields, the `select`/`from`/`where` query model, testing
 guidance (every rule must be validated against both a vulnerable and a safe
 contract), naming conventions, and the review process.
 

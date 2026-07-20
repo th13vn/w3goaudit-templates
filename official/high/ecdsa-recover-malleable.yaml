@@ -18,17 +18,16 @@ meta:
     - https://swcregistry.io/docs/SWC-117
 
 query:
-  scope: entrypoint
-  match:
-    sequence:
-      - kind: call.external
-        name: '^recover$'
-        contains:
-          attr:
-            call_receiver: true
-          name: '^ECDSA$'
-      - kind: state_write
-        left:
-          kind: expr.index_access
-          contains:
-            tainted_from: parameter
+  from: entry_function
+  where:
+    - sequence:
+        - block: external_call
+          name: '^recover$'
+          has:
+            receiver: true
+            name: '^ECDSA$'
+        - block: state_write
+          left:
+            block: index
+            has:
+              tainted: parameter

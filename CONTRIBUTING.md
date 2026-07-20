@@ -46,37 +46,40 @@ categories.
 
 ---
 
-## 3. The `filter` vs `match` layering rule
+## 3. The `select` / `from` / `where` model
 
-This is the most important authoring concept. The two layers serve different
-purposes and must not be conflated:
+A query has three parts. `where` is one flat matcher list that mixes
+**preconditions** and **code shapes** — the engine routes each matcher to the
+right layer, so you do not split them into separate blocks:
 
-- **`filter:`** expresses **function/contract preconditions** — *which*
-  functions or contracts are eligible at all. Filters are often presets — the
-  three built-ins are `unAuthenticated` (no privileged access control),
-  `unCheckedSender` (no privileged auth and no caller self-scoping), and
-  `unLocked` (no reentrancy guard) — combined with the query `scope`.
-  A filter answers "is this the kind of function where the bug could matter?"
+- **`from:`** — the scope to iterate (`entry_function` default, or `function`,
+  `contract`, `main_contract`, `source`, …). Answers "which units does this rule
+  even look at?"
 
-- **`match:`** expresses the **AST pattern** that, if found inside a filtered
-  function, constitutes the finding. A match answers "does the dangerous code
-  shape actually appear here?"
+- **`select:`** — the block kind whose matched node anchors the finding
+  (optional when a top-level `sequence:` / `has:` / root matcher already
+  anchors). Answers "what is the finding pinned to?"
 
-Keep preconditions in `filter` and code shapes in `match`. Pushing
-function-level preconditions into `match` (or vice-versa) makes rules slower,
-noisier, and harder to maintain.
+- **`where:`** — the matchers. Preconditions read as presets and
+  function/contract predicates (`func_name`, `modifier`, `version`, …); code
+  shapes read as `block:` / `has:` / `sequence:` / `arg.N:` / `tainted:`. Express
+  a safety property's **absence** with `not: { preset: ... }` — each preset is
+  true when its property is present (`access_controlled`, `caller_checked`,
+  `reentrancy_guarded`).
+
+For "shape A **or** shape B" use a top-level `or:` list of branches; for a
+multi-site combination finding use a top-level `and:` of labeled branches.
 
 ```yaml
 query:
-  scope: entrypoint
-  filter:
-    preset: unLocked        # precondition: no reentrancy guard
-  match:                    # AST pattern: external call before state write
-    sequence:
-      - any:
-          - kind: eth_transfer
-          - kind: delegatecall
-      - kind: state_write
+  from: entry_function
+  where:
+    - not: { preset: reentrancy_guarded }   # precondition: no reentrancy guard
+    - sequence:                             # AST shape: external call before state write
+        - any:
+            - block: eth_transfer
+            - block: delegatecall
+        - block: state_write
 ```
 
 ---
