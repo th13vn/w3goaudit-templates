@@ -3,6 +3,87 @@
 All notable changes to the official w3goaudit template pack are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v2.1.0] - 2026-07-29
+
+Adds 14 detectors (25 → 39) and tightens 5 existing ones after auditing every
+finding a 470-file corpus of verified block-explorer sources produced (Kyber,
+Euler, CrocSwap, OpenZeppelin, Uniswap v4).
+
+> **Requires `w3goaudit` >= 0.4.2.** The pack uses the `receiver:` matcher and the
+> `initializer_guarded` preset. An older engine **fails to load the entire pack**
+> (`unknown preset "initializer_guarded"`) rather than skipping the affected rules,
+> so upgrade the binary before running `--update-templates`. This is a minor bump
+> because no rule was removed or renamed, but treat the engine floor as hard.
+
+### Added — 14 detectors promoted from the benchmark lane
+
+Generic, benchmark-validated rules that previously existed only in the engine
+repository's dev-only harness, so a released binary never ran them. Each ships with
+vulnerable **and** safe fixtures upstream.
+
+- Read-only reentrancy: `HIGH-READONLY-REENTRANCY-CURVE`,
+  `HIGH-READONLY-REENTRANCY-BALANCER`
+- AMM integration: `HIGH-NO-SLIPPAGE-CHECK`,
+  `HIGH-UNISWAP-CALLBACK-UNPROTECTED`, `HIGH-UNISWAP-V4-HOOK-UNPROTECTED`
+- Access control: `HIGH-ORACLE-PRICE-UPDATE-UNRESTRICTED`, `HIGH-ERC20-PUBLIC-BURN`
+- Callback reentrancy: `HIGH-ERC721-CALLBACK-REENTRANCY`,
+  `HIGH-ERC777-CALLBACK-REENTRANCY`
+- Oracles: `MEDIUM-STALE-ORACLE-DATA`,
+  `MEDIUM-DEPRECATED-CHAINLINK-LATESTANSWER`, `MEDIUM-ORACLE-LP-SPOT-PRICE`,
+  `MEDIUM-ORACLE-CURVE-SPOT-PRICE`
+- Source integrity: `MEDIUM-BIDI-CHARACTERS` (Trojan Source)
+
+A fifteenth candidate — a generic "external call then state write" reentrancy rule —
+was evaluated and rejected: it fired on 36 sites across the upstream fixtures, 17 of
+them deliberate safe controls, because pull-then-credit is the correct ERC20 deposit
+shape. The precise signal it reached for is already covered by the two
+callback-reentrancy rules above.
+
+### Changed — 5 detectors tightened
+
+Each of these reported real, audited production code as vulnerable.
+
+- `CRITICAL-DELEGATECALL-USER-INPUT` — constrains the call's **direct** receiver via
+  the new `receiver:` matcher. `has: {receiver: true, …}` searched every descendant,
+  so the receiver of a nested call inside the encoded arguments satisfied it:
+  CrocSwapDex's `proxyPaths_[CONST].delegatecall(abi.encodeWithSignature(…,
+  curve.pullPriceTick(), …))` was CRITICAL because `curve` is caller-derived, not
+  because the target was.
+- `HIGH-ARBITRARY-LOW-LEVEL-CALL` — same direct-receiver fix, plus the caller must
+  control the **selector**. Contract-built calldata with a pinned selector
+  (`abi.encodeWithSelector(IERC20.transferFrom.selector, …)` — Uniswap's
+  `TransferHelper`) lets the caller choose only the arguments, and was reported in
+  four separate projects.
+- `HIGH-ECDSA-RECOVER-MALLEABLE` — the replay guard must be keyed by the
+  **signature**. Any caller-derived index matched, so `claimed[battleId] = true` — an
+  id-keyed flag, i.e. the correct pattern — was reported.
+- `HIGH-WEAK-PRNG` — excludes a modulo by a power of two.
+  `uint32(block.timestamp % 2**32)` is Uniswap V2's slot-packing truncation, not a
+  random draw.
+- `MEDIUM-UNCHECKED-ARITHMETIC` — anchors on the **operation** rather than the
+  `unchecked` block (a gas-optimized whole-function wrapper produced one
+  unactionable finding for an entire body), and covers only `*`, `-`, and `+` when an
+  operand is caller-controlled. `/` cannot overflow; counter and nonce increments
+  cannot be driven to the type maximum.
+- `MEDIUM-BOOLEAN-CST` — only the constant-folding shapes (`a && false`,
+  `if (true)`). `x == false` is a verbose `!x`: a style preference, and the idiomatic
+  mutex spelling.
+- `MEDIUM-DANGEROUS-STRICT-EQUALITY` — block-clock comparisons only when the other
+  operand is caller-controlled, so Aave's same-block cache short-circuit
+  (`if (reserve.lastUpdateTimestamp == block.timestamp) return cachedIndex;`) is not
+  reported.
+- `HIGH-UNPROTECTED-INITIALIZER` — uses the new `initializer_guarded` preset, which
+  proves a one-time guard from the body (an enforcing check on a state flag that the
+  function, a helper, or a sibling such as the constructor sets). It previously knew
+  only the OpenZeppelin `initializer` modifier and a guard literally naming
+  `_initializersDisabled`, so Euler's `if (initialized) revert; initialized = true;`
+  and Axelar's split `if (_isInitialized()) revert; _initialize();` were both
+  reported.
+
+Net effect on that corpus, combining these with the engine-side fixes in
+`w3goaudit` v0.4.2: **103 → 44 findings**, with the competitive benchmark unchanged
+at 109 true positives and 100% recall.
+
 ## [v2.0.0] - 2026-07-20
 
 Breaking **WQL schema** migration to the canonical query language shipped with

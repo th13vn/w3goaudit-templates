@@ -18,8 +18,8 @@ rebuilding the tool.
 | Path | Responsibility |
 |---|---|
 | `official/critical/` | CRITICAL-severity detectors (2) |
-| `official/high/` | HIGH-severity detectors (15) |
-| `official/medium/` | MEDIUM-severity detectors (8) |
+| `official/high/` | HIGH-severity detectors (24) |
+| `official/medium/` | MEDIUM-severity detectors (13) |
 | `docs/template-format.md` | WQL template-format reference (meta + query grammar) |
 | `docs/severity-taxonomy.md` | Severity/confidence definitions + advisory OWASP SC Top 10 (2025) mapping |
 | `README.md` | User-facing overview, consumption model, template catalog |
@@ -27,7 +27,7 @@ rebuilding the tool.
 | `CHANGELOG.md` | Versioned release history |
 | `LICENSE` | MIT |
 
-**25 templates total** (2 critical + 15 high + 8 medium).
+**39 templates total** (2 critical + 24 high + 13 medium).
 
 ## Template Catalog
 

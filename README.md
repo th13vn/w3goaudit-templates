@@ -2,11 +2,16 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Release](https://img.shields.io/github/v/release/th13vn/w3goaudit-templates?label=release)](https://github.com/th13vn/w3goaudit-templates/releases)
-[![Templates](https://img.shields.io/badge/templates-25-blue.svg)](./official)
+[![Templates](https://img.shields.io/badge/templates-39-blue.svg)](./official)
 
 Official **WQL** (w3goaudit Query Language) security templates for
 [`w3goaudit`](https://github.com/th13vn/w3goaudit) — a Go static-analysis engine
 for Solidity smart contracts.
+
+> **Requires `w3goaudit` >= 0.4.2.** From v2.1.0 the pack uses the `receiver:`
+> matcher and the `initializer_guarded` preset. An older engine **fails to load the
+> whole pack** (`unknown preset "initializer_guarded"`) rather than skipping the
+> affected rules, so upgrade the binary before `--update-templates`.
 
 This repository is the canonical, versioned home of the official template pack.
 Each template is a YAML rule that describes a vulnerability pattern with a
@@ -150,36 +155,49 @@ See [`docs/severity-taxonomy.md`](./docs/severity-taxonomy.md) for both.
 
 ## Template categories
 
-The current pack contains **25** official templates:
+The current pack contains **39** official templates:
 
 | ID | Title | Severity | Confidence |
 | --- | --- | --- | --- |
 | CRITICAL-DELEGATECALL-USER-INPUT | Delegatecall to User-Controlled Address | CRITICAL | HIGH |
 | CRITICAL-SELFDESTRUCT-UNPROTECTED | Unprotected selfdestruct | CRITICAL | HIGH |
-| HIGH-ARBITRARY-LOW-LEVEL-CALL | Arbitrary Low-Level Call (User-Controlled Target & Calldata) | HIGH | MEDIUM |
+| HIGH-ARBITRARY-LOW-LEVEL-CALL | Arbitrary Low-Level Call (User-Controlled Target and Calldata) | HIGH | MEDIUM |
 | HIGH-ARBITRARY-SEND-ETH | Unprotected ETH Withdrawal | HIGH | MEDIUM |
 | HIGH-ARBITRARY-TRANSFERFROM | Arbitrary transferFrom Call | HIGH | MEDIUM |
 | HIGH-DELEGATECALL-IN-LOOP | Delegatecall Inside a Loop | HIGH | MEDIUM |
-| HIGH-ECDSA-RECOVER-MALLEABLE | Signature Malleability: Raw Signature Bytes as State Key | HIGH | MEDIUM |
-| HIGH-ENCODE-PACKED-COLLISION | Hash Collision via abi.encodePacked (Multiple Dynamic Args) | HIGH | MEDIUM |
-| HIGH-INCORRECT-EXP | Suspicious Use of `^` (Bitwise XOR, Likely Meant `**`) | HIGH | MEDIUM |
+| HIGH-ECDSA-RECOVER-MALLEABLE | Signature Malleability: Raw Signature Bytes Used as a State Key | HIGH | MEDIUM |
+| HIGH-ENCODE-PACKED-COLLISION | Hash Collision via abi.encodePacked with Multiple Dynamic Arguments | HIGH | MEDIUM |
+| HIGH-ERC20-PUBLIC-BURN | Public burn Destroys Another Account's Tokens | HIGH | MEDIUM |
+| HIGH-ERC721-CALLBACK-REENTRANCY | ERC721 Receiver Callback Reentrancy (safeMint / safeTransferFrom) | HIGH | MEDIUM |
+| HIGH-ERC777-CALLBACK-REENTRANCY | ERC777 tokensReceived Callback Reentrancy | HIGH | MEDIUM |
+| HIGH-INCORRECT-EXP | Suspicious Use of ^ (Bitwise XOR, Likely Meant **) | HIGH | MEDIUM |
 | HIGH-MSG-VALUE-IN-LOOP | msg.value Used Inside a Loop | HIGH | MEDIUM |
+| HIGH-NO-SLIPPAGE-CHECK | AMM Swap With No Slippage Bound (amountOutMin = 0) | HIGH | MEDIUM |
+| HIGH-ORACLE-PRICE-UPDATE-UNRESTRICTED | Oracle / Price State Writable by Anyone | HIGH | MEDIUM |
 | HIGH-PROXY-STORAGE-COLLISION | Proxy Storage Layout Collision | HIGH | MEDIUM |
+| HIGH-READONLY-REENTRANCY-BALANCER | Read-Only Reentrancy via Balancer Vault getPoolTokens | HIGH | MEDIUM |
+| HIGH-READONLY-REENTRANCY-CURVE | Read-Only Reentrancy via Curve get_virtual_price | HIGH | MEDIUM |
 | HIGH-REENTRANCY-BALANCE | Reentrancy via balanceOf Delta (Stale Snapshot) | HIGH | MEDIUM |
-| HIGH-REENTRANCY-PATTERN | Potential Reentrancy — State Variable Modification | HIGH | MEDIUM |
+| HIGH-REENTRANCY-PATTERN | Potential Reentrancy - State Variable Modification | HIGH | MEDIUM |
 | HIGH-UNCHECKED-ERC20-TRANSFER | Unchecked ERC20 transfer / transferFrom Return Value | HIGH | MEDIUM |
+| HIGH-UNISWAP-CALLBACK-UNPROTECTED | Uniswap Callback Callable by Anyone | HIGH | MEDIUM |
+| HIGH-UNISWAP-V4-HOOK-UNPROTECTED | Uniswap V4 Hook Callable by Anyone | HIGH | MEDIUM |
 | HIGH-UNPROTECTED-INITIALIZER | Unprotected Initializer (Anyone Can Become Owner) | HIGH | HIGH |
 | HIGH-UNRESTRICTED-TRANSFEROWNERSHIP | Unrestricted transferOwnership | HIGH | MEDIUM |
 | HIGH-WEAK-PRNG | Weak Randomness from Block Variables | HIGH | MEDIUM |
+| MEDIUM-BIDI-CHARACTERS | Unicode Bidirectional Control Characters in Source (Trojan Source) | MEDIUM | HIGH |
 | MEDIUM-BOOLEAN-CST | Boolean Constant Misuse | MEDIUM | MEDIUM |
 | MEDIUM-DANGEROUS-STRICT-EQUALITY | Dangerous Strict Equality on Externally-Influenced Balance | MEDIUM | HIGH |
+| MEDIUM-DEPRECATED-CHAINLINK-LATESTANSWER | Deprecated Chainlink latestAnswer / latestRound API | MEDIUM | HIGH |
 | MEDIUM-DIVIDE-BEFORE-MULTIPLY | Division Before Multiplication (Precision Loss) | MEDIUM | HIGH |
+| MEDIUM-ORACLE-CURVE-SPOT-PRICE | Curve get_p Spot Price Returned Directly | MEDIUM | MEDIUM |
+| MEDIUM-ORACLE-LP-SPOT-PRICE | Price Derived From AMM Reserves / Spot Supply Ratio | MEDIUM | MEDIUM |
+| MEDIUM-STALE-ORACLE-DATA | Chainlink latestRoundData Used Without Freshness Check | MEDIUM | MEDIUM |
 | MEDIUM-TX-ORIGIN-AUTH | tx.origin Used for Authentication | MEDIUM | HIGH |
-| MEDIUM-UNCHECKED-ARITHMETIC | Arithmetic in Unchecked Block (Potential Overflow) | MEDIUM | HIGH |
+| MEDIUM-UNCHECKED-ARITHMETIC | Arithmetic in Unchecked Block (Potential Overflow) | MEDIUM | MEDIUM |
 | MEDIUM-UNCHECKED-LOWLEVEL-CALL | Unchecked Low-Level Call Return Value | MEDIUM | MEDIUM |
 | MEDIUM-UNCHECKED-SEND | Unchecked send() Return Value | MEDIUM | HIGH |
 | MEDIUM-VIEW-PURE-MODIFIES-STATE | view/pure Function Modifies State | MEDIUM | HIGH |
-
 ---
 
 ## Versioning policy
