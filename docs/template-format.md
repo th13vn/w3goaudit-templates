@@ -223,9 +223,7 @@ query:
     - not: { preset: reentrancy_guarded }
     # external call followed by a state write
     - sequence:
-        - any:
-            - block: eth_transfer   # .transfer / .send / .call{value:} / raw .call
-            - block: delegatecall   # arbitrary code execution in this context
+        - block: eth_transfer   # .transfer / .send / .call{value:} / raw .call / asm.call
         - block: state_write
 ```
 
@@ -233,10 +231,16 @@ How the engine reads this:
 
 1. `from: entry_function` → iterate externally reachable functions.
 2. `not: { preset: reentrancy_guarded }` → keep only functions with no guard.
-3. `sequence` → find an ETH-bearing/raw call **or** a delegatecall that occurs
-   **before** a state write. Its first step is the finding anchor.
+3. `sequence` → find an ETH-bearing or raw low-level call that occurs **before** a
+   state write. Its first step is the finding anchor.
 4. On a match, emit a finding carrying the `meta` (severity, description,
    recommendation, references).
+
+`delegatecall` is deliberately absent (since v2.1.1). It executes the callee's
+bytecode in the caller's own context — same storage, same guard slot — so re-entry
+through it is not attacker-injected reentry, and real targets are trusted, admin-set
+sidecars or `address(this)`. An attacker-influenced delegatecall target is arbitrary
+code execution, which `CRITICAL-DELEGATECALL-USER-INPUT` reports instead.
 
 ---
 

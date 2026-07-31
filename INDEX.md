@@ -75,6 +75,14 @@ rebuilding the tool.
   fields — record classification under `references`.
 - **Every rule must pass a vulnerable + safe fixture pair** before merge
   (CONTRIBUTING §4).
+- **Reentrancy rules match call kinds that can hand control to an attacker**, not
+  every outgoing call. `HIGH-REENTRANCY-PATTERN` matches `eth_transfer`
+  (`.transfer` / `.send` / `.call{value:}` / raw `.call` / `asm.call`) and
+  deliberately excludes both typed ERC20 method calls (re-enter only via
+  non-standard ERC777 hooks) and `delegatecall` (executes in the caller's own
+  context, so re-entry is the contract running its own code). Dangerous
+  delegatecall belongs to `CRITICAL-DELEGATECALL-USER-INPUT` and
+  `HIGH-DELEGATECALL-IN-LOOP`.
 
 ## Change Checklist
 

@@ -12,6 +12,12 @@ for Solidity smart contracts.
 > matcher and the `initializer_guarded` preset. An older engine **fails to load the
 > whole pack** (`unknown preset "initializer_guarded"`) rather than skipping the
 > affected rules, so upgrade the binary before `--update-templates`.
+>
+> **`>= 0.4.3` recommended.** v2.1.1 fixes one false-positive class in the pack; its
+> companion fix — an inline-assembly `sstore` counting as the one-time-init flag
+> write, so `HIGH-UNPROTECTED-INITIALIZER` stops reporting explicit-storage-slot
+> guards like Axelar's `InterchainToken.init()` — is engine-side and cannot ship in
+> a template.
 
 This repository is the canonical, versioned home of the official template pack.
 Each template is a YAML rule that describes a vulnerability pattern with a

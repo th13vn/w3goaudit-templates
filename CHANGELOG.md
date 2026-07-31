@@ -3,6 +3,44 @@
 All notable changes to the official w3goaudit template pack are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [v2.1.1] - 2026-07-31
+
+One precision fix, no rule added, removed, or renamed. Engine floor is unchanged
+(`w3goaudit` >= 0.4.2) — this pack uses no new matcher.
+
+### Fixed — `HIGH-REENTRANCY-PATTERN` no longer matches `delegatecall`
+
+The CEI rule matched `delegatecall` alongside ETH-bearing and raw low-level calls.
+Delegatecall executes the callee's bytecode in **this** contract's context — the
+same storage, the same guard slot — so re-entry through it is the contract running
+its own code, not attacker-injected reentry. In practice the target is a trusted,
+admin-set implementation or sidecar (`proxyPaths_[CONST].delegatecall(...)`), or
+literally `address(this)` (multicall).
+
+On the 470-contract corpus this was **3 of 7** findings in that class, all noise:
+CrocSwap `ProxyCaller.callSwap` / `callCrossFlag` and Eesee
+`MulticallPayable.multicall`. No true positive is lost — when the delegatecall
+target is attacker-influenced the bug is arbitrary code execution, strictly worse
+than reentrancy, and `CRITICAL-DELEGATECALL-USER-INPUT` already reports it.
+`HIGH-DELEGATECALL-IN-LOOP` and `MEDIUM-VIEW-PURE-MODIFIES-STATE` are unchanged.
+
+The rule now reads:
+
+```yaml
+- sequence:
+    - block: eth_transfer   # .transfer / .send / .call{value:} / raw .call / asm.call
+    - block: state_write
+```
+
+### Note — one companion fix ships in the engine, not here
+
+`HIGH-UNPROTECTED-INITIALIZER` reported Axelar's `InterchainToken.init()` despite
+its `if (_isInitialized()) revert AlreadyInitialized();` guard, because the
+`initializer_guarded` preset did not treat an inline-assembly
+`sstore(INITIALIZED_SLOT, true)` as setting the flag. That is engine-side and is
+fixed in **`w3goaudit` v0.4.3**; `--update-templates` cannot deliver it. Upgrade
+the binary as well.
+
 ## [v2.1.0] - 2026-07-29
 
 Adds 14 detectors (25 → 39) and tightens 5 existing ones after auditing every
