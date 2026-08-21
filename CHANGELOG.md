@@ -149,7 +149,7 @@ these templates.
 - **Template IDs are unchanged** (`<SEVERITY>-<FILENAME>`), so `--include` /
   `--exclude` globs continue to work.
 - Documentation (`README.md`, `CONTRIBUTING.md`, `docs/template-format.md`)
-  rewritten for the canonical grammar; added a repository `INDEX.md` map.
+  rewritten for the canonical grammar; added a repository `AI.md` map.
 
 ### Migration
 - Run `w3goaudit --update-templates` on **v0.4.0+** to pull this release. On an
