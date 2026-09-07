@@ -3,6 +3,81 @@
 All notable changes to the official w3goaudit template pack are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+No changes yet.
+
+## [v3.0.0] - 2026-09-07
+
+Evidence-first major release paired with W3GoAudit `v0.6.0`. This release
+resets the trusted official inventory from 39 templates to 20: 2 critical, 10
+high, and 8 medium. The downloadable `official/` tree and W3GoAudit's embedded
+fallback are byte-identical.
+
+> **Requires W3GoAudit `v0.6.0` or newer.** The pack consumes direct semantic
+> authorization and initializer presets, external-boundary result evidence, and
+> transaction-context facts unavailable in older engines.
+
+### Breaking: trusted inventory reset
+
+- Removed 19 unsupported protocol-specific or weakly evidenced detectors from
+  the official pack. The removed IDs covered broad callback, read-only
+  reentrancy, oracle, proxy-storage, signature, burn, delegatecall-loop,
+  arbitrary-transfer, Boolean-style, and protocol-specific authorization
+  patterns.
+- Removed detectors are deferred, not declared impossible. They may return in a
+  later release after generic semantic evidence and vulnerable/safe fixtures
+  prove their mechanisms without detector-specific engine shortcuts.
+- Existing users who include or suppress a removed ID must update those lists.
+  Removed IDs are not reused for different mechanisms.
+
+### Changed: one direct authoring model
+
+- Canonical WQL remains the only syntax: `select`/`from`/`where`, or query-level
+  `and:`/`or:` composition.
+- Authorization now uses `preset.authorization` with `type: protected` or
+  `type: self_sender`. `protected` may name one principal, list OR alternatives
+  such as `[owner, pair, pool]`, or use an explicit regex option. Principal
+  literals are trimmed, deduplicated, sorted, and matched as complete values.
+- Initializer takeover uses only
+  `preset.initializer: {takeover: possible}`, normally after narrowing entry
+  names with `func_name`. Constructor disabling, mutex state, proxy linkage,
+  deployment authority, and atomicity remain internal evidence.
+- Inheritance, C3 linearization, virtual dispatch, and `super` dispatch are
+  automatic engine behavior. Runtime syntax is removed completely.
+- Candidate templates, authored `unknown` values, raw authorization or lifecycle
+  attributes, compatibility mappings, and beginner/expert dialects are not pack
+  surfaces.
+- Presence-only predicates use marker or nested-option syntax. The official pack
+  does not write Boolean forms such as `receiver: true` or
+  `unchecked_var: true`.
+
+### Changed: semantic detector evidence
+
+- `HIGH-UNCHECKED-ERC20-TRANSFER`, `MEDIUM-UNCHECKED-LOWLEVEL-CALL`,
+  and `MEDIUM-UNCHECKED-SEND` now use external-boundary result disposition and
+  direct-check evidence. Discarded and captured-but-unchecked results report;
+  checked, returned, consumed, unavailable, and ambiguous cases fail closed.
+- `HIGH-MSG-VALUE-IN-LOOP` now requires a proven repeatable transaction-level
+  `msg.value` effect reaching a state write, ETH call value, or exact stateful
+  helper. Textual reads, observational uses, single-iteration loops, uncertain
+  aliases, and unresolved helpers do not report.
+- Authorization-sensitive detectors use exact modifier, helper, role, principal,
+  inheritance, and dominance evidence. A generic check such as `require(ok)` is
+  not treated as caller authorization.
+- `HIGH-UNPROTECTED-INITIALIZER` requires positive first-call takeover evidence,
+  an initializer-shaped entry, an unprotected path, and a state write.
+
+### Documentation and quality
+
+- Rewrote the index, README, contribution guide, and format reference around the
+  smaller explicit WQL model.
+- Normalized official metadata and comments for readability without introducing
+  compatibility layers.
+- The W3GoAudit release gate validates all templates, deterministic repeated
+  execution, source/cache parity, official scans, and competitive benchmark
+  thresholds.
+
 ## [v2.1.1] - 2026-07-31
 
 One precision fix, no rule added, removed, or renamed. Engine floor is unchanged
@@ -261,6 +336,9 @@ Initial public release of the official WQL template pack — **25 templates**.
 - `SEC-BOOL-001` — Boolean Constant Misuse (MEDIUM)
 - `SEC-MUTABILITY-001` — view/pure Function Modifies State (MEDIUM)
 
+[v3.0.0]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v3.0.0
+[v2.1.1]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v2.1.1
+[v2.1.0]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v2.1.0
 [v2.0.0]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v2.0.0
 [v1.0.1]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v1.0.1
 [v1.0.0]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v1.0.0

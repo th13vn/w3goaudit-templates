@@ -1,6 +1,6 @@
 meta:
   id: CRITICAL-DELEGATECALL-USER-INPUT
-  title: Delegatecall to User-Controlled Address
+  title: Delegatecall to user-controlled address
   severity: CRITICAL
   confidence: HIGH
   description: >
@@ -20,12 +20,11 @@ query:
   from: entry_function
   select: delegatecall
   where:
-    - not: { preset: access_controlled }
-    # The DELEGATECALL's own target must be caller-controlled. `has:` would search
-    # every descendant, so the receiver of a nested call in the encoded arguments
-    # satisfied it — CrocSwapDex's
-    # `proxyPaths_[CONST].delegatecall(abi.encodeWithSignature(…, curve.pullPriceTick(), …))`
-    # was reported CRITICAL because `curve` is caller-derived, even though the
-    # target is a constant-index read of governance-controlled storage.
+    - not:
+        preset:
+          authorization:
+            type: protected
+    # Match the delegatecall's own receiver. A descendant search could match a
+    # nested receiver inside encoded arguments instead of the actual target.
     - receiver:
         tainted: user_controlled

@@ -1,140 +1,169 @@
 # Contributing to w3goaudit-templates
 
-Thank you for helping improve the official security rule pack for
-[`w3goaudit`](https://github.com/th13vn/w3goaudit). This guide explains how to
-write, test, and submit a WQL template.
+Thank you for improving the official security rule pack for
+[`w3goaudit`](https://github.com/th13vn/w3goaudit). The goal is not to maximize
+the number of warnings. The goal is to encode vulnerability mechanisms with
+evidence that an auditor can verify quickly.
 
----
+Pack `v3.0.0` requires W3GoAudit `v0.6.0` or newer. Use the current engine when
+validating a rule.
 
-## 1. Anatomy of a template
+## 1. Template Shape
 
-Every template is a single YAML file with two top-level blocks:
+Every template is one YAML file with two top-level blocks:
 
 ```yaml
 meta:
-  # human + machine metadata about the finding
+  # finding metadata
 query:
-  # how the engine decides what to flag
+  # canonical WQL
 ```
 
-A full reference lives in [`docs/template-format.md`](./docs/template-format.md).
-Read it before writing a rule.
+A query uses `select`/`from`/`where`, or a one-level query composition with
+`and:` or `or:`. There is one authoring language, not separate beginner, expert,
+legacy, or runtime layers. Read [Template Format](./docs/template-format.md)
+before adding a rule.
 
----
+## 2. Required Metadata
 
-## 2. Required `meta` fields
+Official detectors require all fields below.
 
-| Field | Required | Notes |
-| --- | --- | --- |
-| `id` | yes | Stable, unique. Format `<SEVERITY>-<FILENAME>` — the upper-cased file name (e.g. `HIGH-REENTRANCY-BALANCE` for `high/reentrancy-balance.yaml`). Never reuse an id for a different rule. |
-| `title` | yes | Short, specific, human-readable. |
-| `severity` | yes | One of `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`. |
-| `confidence` | yes | One of `HIGH`, `MEDIUM`, `LOW`. |
-| `description` | recommended | What the pattern is and why it is dangerous. |
-| `recommendation` | recommended | Concrete, actionable remediation. |
-| `references` | optional | SWC / best-practice / advisory links (engine propagates these to findings). |
-| `fix` | optional | Short one-line fix summary, surfaced alongside `recommendation`. |
+| Field | Requirement |
+|---|---|
+| `id` | Stable `<SEVERITY>-<FILENAME>` value that matches path and severity |
+| `title` | Concise sentence-case mechanism summary |
+| `severity` | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` |
+| `confidence` | `HIGH`, `MEDIUM`, or `LOW` |
+| `description` | State exactly what the query proves and why it matters |
+| `recommendation` | Practical mitigation for the proven condition |
 
-> **No `cwe` / `owasp` fields:** the engine does not parse or emit dedicated
-> `cwe`/`owasp` meta fields — they are silently ignored. Record any CWE / OWASP
-> SC Top 10 classification as a `references` entry instead.
+`references` and `fix` are optional. The engine does not emit dedicated `cwe`
+or `owasp` metadata. Put such classifications in `references` if useful.
 
-Severity and confidence definitions and the (advisory) OWASP SC Top 10 (2025)
-mapping are in [`docs/severity-taxonomy.md`](./docs/severity-taxonomy.md).
-Classify against that smart-contract taxonomy — do **not** invent ad-hoc
-categories.
+Comments should explain a non-obvious matcher boundary or semantic scope. Do
+not keep implementation history, benchmark anecdotes, or migration notes in a
+production detector file.
 
----
+## 3. Authoring Principles
 
-## 3. The `select` / `from` / `where` model
+### Prefer evidence to vocabulary
 
-A query has three parts. `where` is one flat matcher list that mixes
-**preconditions** and **code shapes** — the engine routes each matcher to the
-right layer, so you do not split them into separate blocks:
+Use semantic type, taint, authorization, reachability, result, transaction
+context, and execution-order evidence before names or source regex. A name
+regex is appropriate for narrowing intent, such as initializer entry names, but
+is not a substitute for the vulnerable mechanism.
 
-- **`from:`** — the scope to iterate (`entry_function` default, or `function`,
-  `contract`, `main_contract`, `source`, …). Answers "which units does this rule
-  even look at?"
+### Use direct semantic presets
 
-- **`select:`** — the block kind whose matched node anchors the finding
-  (optional when a top-level `sequence:` / `has:` / root matcher already
-  anchors). Answers "what is the finding pinned to?"
-
-- **`where:`** — the matchers. Preconditions read as presets and
-  function/contract predicates (`func_name`, `modifier`, `version`, …); code
-  shapes read as `block:` / `has:` / `sequence:` / `arg.N:` / `tainted:`. Express
-  a safety property's **absence** with `not: { preset: ... }` — each preset is
-  true when its property is present (`access_controlled`, `caller_checked`,
-  `reentrancy_guarded`).
-
-For "shape A **or** shape B" use a top-level `or:` list of branches; for a
-multi-site combination finding use a top-level `and:` of labeled branches.
+Protected principal:
 
 ```yaml
-query:
-  from: entry_function
-  where:
-    - not: { preset: reentrancy_guarded }   # precondition: no reentrancy guard
-    - sequence:                             # AST shape: external call before state write
-        - any:
-            - block: eth_transfer
-            - block: delegatecall
-        - block: state_write
+- not:
+    preset:
+      authorization:
+        type: protected
+        principal: [owner, pair, pool]
 ```
 
----
+Caller self-scoping:
 
-## 4. Testing guidance
+```yaml
+- preset:
+    authorization:
+      type: self_sender
+```
 
-A rule is not acceptable until it is validated against **both**:
+Initializer takeover:
 
-1. A **vulnerable** contract — the rule must fire (true positive).
-2. A **safe** contract that is structurally similar — the rule must **not** fire
-   (no false positive). The safe variant should include the canonical fix
-   (e.g. a reentrancy guard, an access-control modifier, a checked return
-   value).
+```yaml
+- func_name: '(?i)^(initialize|initialise|init|__init|setup)$'
+- preset:
+    initializer:
+      takeover: possible
+```
 
-Run the engine locally against your fixtures:
+`protected` may omit `principal`, use one literal, use a list of OR literals, or
+use `principal: {regex: "..."}`. `self_sender` does not accept a principal.
+
+### Keep syntax explicit and small
+
+- Inheritance, virtual dispatch, and `super` dispatch are automatic. Do not add
+  `runtime:` syntax.
+- Do not author internal authorization or initializer fact attributes.
+- Do not create candidate templates inside the official pack.
+- Do not author `unknown`; missing positive evidence fails closed.
+- Do not write Boolean presence flags. Use `unchecked_var:` and nested options
+  such as `receiver: {tainted: parameter}`.
+- Do not introduce compatibility aliases or mapping layers.
+- Use ordinary attributes, regex, and structured options for refinement.
+
+## 4. Evidence and Test Requirements
+
+A rule is not ready until the core repository includes all applicable cases:
+
+1. A vulnerable fixture that must report.
+2. A safe fixture with the canonical mitigation that must remain silent.
+3. Structural variants such as internal helpers, inherited functions, overloads,
+   modifiers, or Yul when relevant.
+4. Ambiguous, unresolved, or incomplete controls that must fail closed.
+5. Repeated execution and source/cache parity.
+
+Run the engine against the pack:
 
 ```bash
-w3goaudit ./path/to/fixtures/ --template ./official/
-# or target a single rule:
-w3goaudit ./path/to/fixtures/ --template ./official/high/your-rule.yaml
+go build -trimpath -o /tmp/w3goaudit ./cmd/w3goaudit
+/tmp/w3goaudit test-data/security \
+  --template ../w3goaudit-templates/official \
+  --output /tmp/w3goaudit-pack-scan \
+  --no-color
 ```
 
-Prefer tightening a rule to eliminate a false-positive class over broadening it
-for one more true positive. Document non-obvious FP/TP trade-offs in a YAML
-comment inside the rule (see `reentrancy-pattern.yaml` for an example).
+Run focused and full engine tests from the W3GoAudit repository:
 
----
+```bash
+go test ./pkg/engine -run 'TestOfficialPack|TestPromotedDetectors' -count=1
+go test ./... -count=1
+```
 
-## 5. Naming conventions
+Before release, compare both distribution copies:
 
-- **File name:** lowercase, hyphen-separated, descriptive of the pattern, e.g.
-  `delegatecall-user-input.yaml`, `unchecked-erc20-transfer.yaml`.
-- **Folder:** place the file under `official/<severity>/` matching its
-  `meta.severity` — `critical/`, `high/`, or `medium/`.
-- **`meta.id`:** `<SEVERITY>-<FILENAME>` — the severity followed by the
-  upper-cased file name (hyphens kept), e.g. `high/delegatecall-in-loop.yaml`
-  → `HIGH-DELEGATECALL-IN-LOOP`. The id must stay in sync with both the file
-  name and the folder.
-- One vulnerability pattern per file.
+```bash
+diff -ru templates/official ../w3goaudit-templates/official
+```
 
----
+## 5. Naming and Layout
 
-## 6. PR / review process
+- Use lowercase hyphen-separated filenames.
+- Place the file under `official/<severity>/`.
+- Set `meta.id` to the uppercased severity plus filename, for example
+  `high/example-rule.yaml` becomes `HIGH-EXAMPLE-RULE`.
+- Keep one vulnerability mechanism per detector ID.
+- Never reuse a removed ID for a different mechanism.
 
-1. Fork and create a branch (`add-rule-<id>` or `fix-<id>-fp`).
-2. Add or modify the rule under `official/`.
-3. Include your vulnerable + safe fixtures (or describe them in the PR) and the
-   command output showing the rule fires/does-not-fire as intended.
-4. Update the category table in `README.md` and add a `CHANGELOG.md` entry.
-5. Open a PR describing the pattern and the severity/confidence rationale
-   (noting the OWASP SC Top 10 (2025) category for context, even though it is
-   not an emitted field).
-6. A maintainer reviews for correctness, false-positive risk, taxonomy
-   accuracy, and naming. Tuning of severity/confidence may be requested before
-   merge.
+## 6. Review Standard
 
-New templates ship in the next `MINOR` release; FP/FN tuning ships in a `PATCH`
-release.
+A reviewer checks:
+
+- the rule proves what its description claims;
+- the finding anchors on an actionable source location;
+- safe patterns and ambiguous evidence do not report;
+- the matcher is protocol-neutral unless the detector explicitly and reliably
+  models a protocol standard;
+- exact identities and inherited dispatch remain correct;
+- the pack is deterministic and byte-identical across both repositories;
+- inventory tables and active docs are updated.
+
+If the engine lacks necessary evidence, defer the detector and propose a generic
+semantic capability. Do not compensate with a broad production regex.
+
+## 7. Versioning and Pull Requests
+
+- Removing or renaming IDs is a major release.
+- Adding IDs is a minor release.
+- Precision tuning and documentation are patch releases when inventory remains
+  compatible.
+
+A pull request must list the vulnerable and safe cases, explain the evidence and
+false-positive boundary, report the exact verification commands, update
+`README.md`, `AI.md`, `CHANGELOG.md`, and relevant docs, and identify the minimum
+W3GoAudit version.

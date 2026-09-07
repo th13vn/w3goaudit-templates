@@ -1,56 +1,102 @@
 # w3goaudit-templates Index
 
-AI-oriented map of the official WQL template pack. This repository is the
-canonical, versioned home of the rules the [`w3goaudit`](https://github.com/th13vn/w3goaudit)
-engine downloads into the user's template home.
+Agent-facing map for the official WQL detector pack consumed by
+[`w3goaudit`](https://github.com/th13vn/w3goaudit). This repository publishes
+the downloadable pack; `w3goaudit/templates/official` is the byte-identical
+embedded fallback paired with the same release.
 
 ## Purpose
 
-Each file under `official/` is one YAML detector written in canonical **WQL**
-(`select` / `from` / `where`, or an `and:` / `or:` composition). The engine
-loads every `*.yaml` recursively, evaluates each rule against the parsed
-Solidity AST, and emits a finding per match. Distributing rules here (separate
-from the engine) lets coverage ship via tagged GitHub Releases without
-rebuilding the tool.
+Every file under `official/` is one deterministic Solidity detector written in
+canonical WQL. The trusted pack favors mechanisms supported by exact semantic
+or structural evidence. Unsupported protocol-specific or weakly evidenced
+detectors are deferred rather than approximated with broad names or source
+regexes.
+
+Pack `v3.0.0` requires W3GoAudit `v0.6.0` or newer. The current inventory is
+**20 detectors**: 2 critical, 10 high, and 8 medium.
 
 ## Repository Map
 
 | Path | Responsibility |
 |---|---|
-| `official/critical/` | CRITICAL-severity detectors (2) |
-| `official/high/` | HIGH-severity detectors (24) |
-| `official/medium/` | MEDIUM-severity detectors (13) |
-| `docs/template-format.md` | WQL template-format reference (meta + query grammar) |
-| `docs/severity-taxonomy.md` | Severity/confidence definitions + advisory OWASP SC Top 10 (2025) mapping |
-| `README.md` | User-facing overview, consumption model, template catalog |
-| `CONTRIBUTING.md` | Authoring rules, required `meta` fields, testing guidance |
-| `CHANGELOG.md` | Versioned release history |
-| `LICENSE` | MIT |
+| `official/critical/` | CRITICAL detectors (2) |
+| `official/high/` | HIGH detectors (10) |
+| `official/medium/` | MEDIUM detectors (8) |
+| `docs/template-format.md` | Accessible WQL authoring reference |
+| `docs/severity-taxonomy.md` | Severity and confidence guidance |
+| `README.md` | User-facing installation, model, and inventory |
+| `CONTRIBUTING.md` | Rule-quality and submission requirements |
+| `CHANGELOG.md` | Versioned release history and breaking changes |
 
-**39 templates total** (2 critical + 24 high + 13 medium).
+## Canonical Authoring Model
 
-## Template Catalog
+A template contains `meta` plus one `query`. A query uses
+`select`/`from`/`where`, or a query-level `and:`/`or:` composition. Inheritance,
+C3 linearization, virtual dispatch, and `super` dispatch are automatic engine
+behavior. Templates never select a runtime mode.
+
+Authorization is one direct parameterized preset:
+
+```yaml
+- not:
+    preset:
+      authorization:
+        type: protected
+        principal: [owner, pair, pool]
+```
+
+`authorization.type` is `protected` or `self_sender`. `protected` may omit the
+principal, name one principal, list OR alternatives, or use the explicit
+`principal: {regex: "..."}` option. Literal principals are trimmed,
+deduplicated, sorted, and matched as complete values. `self_sender` means a
+caller is restricted to its own resource and does not accept `principal`.
+
+Initializer takeover is one narrow preset, normally combined with a function
+name regex:
+
+```yaml
+- func_name: '(?i)^(initialize|initialise|init|__init|setup)$'
+- preset:
+    initializer:
+      takeover: possible
+```
+
+Constructor disabling, mutex state, proxy linkage, deployment authority, and
+atomicity remain internal lifecycle evidence. They are not public template
+options. Missing, unresolved, ambiguous, or incomplete positive evidence fails
+closed.
+
+Use nested matchers and presence syntax instead of Boolean flags:
+
+```yaml
+- receiver:
+    tainted: user_controlled
+- unchecked_var:
+```
+
+Do not author `runtime:`, raw authorization or lifecycle attributes, candidate
+templates, `unknown` values, Boolean marker values such as
+`unchecked_var: true`, or compatibility aliases. Use semantic attributes plus
+ordinary regex or structured options when a detector needs refinement.
+
+## Official Detector Inventory
 
 | Severity | ID | File |
 |---|---|---|
 | CRITICAL | `CRITICAL-DELEGATECALL-USER-INPUT` | `official/critical/delegatecall-user-input.yaml` |
 | CRITICAL | `CRITICAL-SELFDESTRUCT-UNPROTECTED` | `official/critical/selfdestruct-unprotected.yaml` |
 | HIGH | `HIGH-ARBITRARY-LOW-LEVEL-CALL` | `official/high/arbitrary-low-level-call.yaml` |
-| HIGH | `HIGH-ARBITRARY-SEND-ETH` | `official/high/arbitrary-send-eth.yaml` |
-| HIGH | `HIGH-ARBITRARY-TRANSFERFROM` | `official/high/arbitrary-transferfrom.yaml` |
-| HIGH | `HIGH-DELEGATECALL-IN-LOOP` | `official/high/delegatecall-in-loop.yaml` |
-| HIGH | `HIGH-ECDSA-RECOVER-MALLEABLE` | `official/high/ecdsa-recover-malleable.yaml` |
 | HIGH | `HIGH-ENCODE-PACKED-COLLISION` | `official/high/encode-packed-collision.yaml` |
 | HIGH | `HIGH-INCORRECT-EXP` | `official/high/incorrect-exp.yaml` |
 | HIGH | `HIGH-MSG-VALUE-IN-LOOP` | `official/high/msg-value-in-loop.yaml` |
-| HIGH | `HIGH-PROXY-STORAGE-COLLISION` | `official/high/proxy-storage-collision.yaml` |
-| HIGH | `HIGH-REENTRANCY-BALANCE` | `official/high/reentrancy-balance.yaml` |
+| HIGH | `HIGH-NO-SLIPPAGE-CHECK` | `official/high/no-slippage-check.yaml` |
 | HIGH | `HIGH-REENTRANCY-PATTERN` | `official/high/reentrancy-pattern.yaml` |
 | HIGH | `HIGH-UNCHECKED-ERC20-TRANSFER` | `official/high/unchecked-erc20-transfer.yaml` |
 | HIGH | `HIGH-UNPROTECTED-INITIALIZER` | `official/high/unprotected-initializer.yaml` |
 | HIGH | `HIGH-UNRESTRICTED-TRANSFEROWNERSHIP` | `official/high/unrestricted-transferownership.yaml` |
 | HIGH | `HIGH-WEAK-PRNG` | `official/high/weak-prng.yaml` |
-| MEDIUM | `MEDIUM-BOOLEAN-CST` | `official/medium/boolean-cst.yaml` |
+| MEDIUM | `MEDIUM-BIDI-CHARACTERS` | `official/medium/bidi-characters.yaml` |
 | MEDIUM | `MEDIUM-DANGEROUS-STRICT-EQUALITY` | `official/medium/dangerous-strict-equality.yaml` |
 | MEDIUM | `MEDIUM-DIVIDE-BEFORE-MULTIPLY` | `official/medium/divide-before-multiply.yaml` |
 | MEDIUM | `MEDIUM-TX-ORIGIN-AUTH` | `official/medium/tx-origin-auth.yaml` |
@@ -59,39 +105,42 @@ rebuilding the tool.
 | MEDIUM | `MEDIUM-UNCHECKED-SEND` | `official/medium/unchecked-send.yaml` |
 | MEDIUM | `MEDIUM-VIEW-PURE-MODIFIES-STATE` | `official/medium/view-pure-modifies-state.yaml` |
 
-## Key Invariants
+## Evidence-Sensitive Detectors
 
-- **ID form is `<SEVERITY>-<FILENAME>`** (upper-cased file name). The ID appears
-  in every finding and in `--include`/`--exclude` globs; never reuse an ID.
-- **File lives in `official/<severity>/` matching its `severity` meta.** The
-  engine loads recursively, so folder layout is organizational only.
-- **Canonical WQL only.** Templates use `query:` with `select`/`from`/`where`
-  (or `and:`/`or:`). The pre-2.0 `scope`/`filter`/`match` form is not accepted
-  by w3goaudit v0.4+. Requires engine **v0.4.0+**.
-- **Presets express presence of a safety property**; the vulnerable case negates
-  them (`not: {preset: access_controlled|caller_checked|reentrancy_guarded}`).
-- **`meta` fields the engine parses:** `id`, `title`, `severity`, `confidence`,
-  `description`, `recommendation`, `references`, `fix`. There are no `cwe`/`owasp`
-  fields — record classification under `references`.
-- **Every rule must pass a vulnerable + safe fixture pair** before merge
-  (CONTRIBUTING §4).
-- **Reentrancy rules match call kinds that can hand control to an attacker**, not
-  every outgoing call. `HIGH-REENTRANCY-PATTERN` matches `eth_transfer`
-  (`.transfer` / `.send` / `.call{value:}` / raw `.call` / `asm.call`) and
-  deliberately excludes both typed ERC20 method calls (re-enter only via
-  non-standard ERC777 hooks) and `delegatecall` (executes in the caller's own
-  context, so re-entry is the contract running its own code). Dangerous
-  delegatecall belongs to `CRITICAL-DELEGATECALL-USER-INPUT` and
-  `HIGH-DELEGATECALL-IN-LOOP`.
+- `HIGH-UNCHECKED-ERC20-TRANSFER`, `MEDIUM-UNCHECKED-LOWLEVEL-CALL`, and
+  `MEDIUM-UNCHECKED-SEND` use external-boundary result disposition and direct
+  check evidence. Discarded and captured-but-unchecked results report; checked,
+  returned, consumed, unavailable, or ambiguous results do not.
+- `HIGH-MSG-VALUE-IN-LOOP` uses transaction-context facts. A loop must repeat a
+  proven `msg.value` state write, ETH call value, or exact stateful helper. A
+  textual read alone is not enough.
+- Protected-entry detectors use `preset.authorization`; initializer takeover
+  uses `preset.initializer`. Generic `require(ok)` checks are not authorization.
+
+## Release and Sync Invariants
+
+- Release tags use `vX.Y.Z`. Removing or renaming detector IDs requires a major
+  release.
+- Pack `v3.0.0` is paired with core `v0.6.0` and must be published only after
+  that engine release exists.
+- Before release, `official/` here and `w3goaudit/templates/official/` must be
+  byte-identical. Never publish only one distribution channel.
+- The W3GoAudit engine is the validator. Run official-pack tests, source/cache
+  parity, the competitive benchmark, and a real scan with this directory.
+- A GitHub Release tag is the downloadable artifact. W3GoAudit records the tag
+  in `~/.w3goaudit/templates/.version`.
 
 ## Change Checklist
 
-- Adding/tuning a rule: place under `official/<severity>/`, set a matching
-  `<SEVERITY>-<FILENAME>` id, validate against vulnerable **and** safe fixtures,
-  and update the catalog tables in this file, `README.md`, and `CHANGELOG.md`.
-- Grammar/behavior questions: the authoritative engine reference is
-  [`w3goaudit/docs/wql-syntax.md`](https://github.com/th13vn/w3goaudit/blob/main/docs/wql-syntax.md);
-  `docs/template-format.md` here is the pack-facing subset.
-- Releases are tagged `vX.Y.Z` (SemVer). MAJOR = removing/renaming templates or
-  breaking the WQL schema; MINOR = new templates; PATCH = doc/tuning with
-  identical detections.
+1. Keep the file path, severity, and `<SEVERITY>-<FILENAME>` ID aligned.
+2. Add vulnerable, safe, and structural-variant fixtures in the core repo.
+3. Prefer semantic, type, taint, reachability, and ordering evidence over names.
+4. Validate malformed and ambiguous cases fail closed.
+5. Compare repeated source scans and a cached-database scan.
+6. Update this file, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, and `docs/`
+   whenever inventory or authoring behavior changes.
+7. Synchronize both pack copies and release the engine first when new semantics
+   are required.
+
+The complete engine grammar is maintained in
+[`w3goaudit/docs/wql-syntax.md`](https://github.com/th13vn/w3goaudit/blob/main/docs/wql-syntax.md).

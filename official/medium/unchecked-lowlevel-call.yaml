@@ -1,16 +1,16 @@
 meta:
   id: MEDIUM-UNCHECKED-LOWLEVEL-CALL
-  title: "Unchecked Low-Level Call Return Value"
+  title: "Unchecked low-level call return value"
   severity: MEDIUM
   confidence: MEDIUM
   description: >
     A low-level `addr.call{value: ...}(data)` (or `addr.call(data)`) is invoked
-    but the `(bool success, bytes memory)` return tuple is discarded. Low-level
-    calls do NOT revert on failure — they return `success = false`. Discarding
-    that means a failed call is silently absorbed; if state was updated before
-    the call (claim flags, balances), the contract can leak funds or grant
-    privileges that were never paid for. Equivalent to Slither's unchecked-
-    lowlevel detector.
+    but its `(bool success, bytes memory)` result is discarded or captured
+    without a proven check. Low-level calls do NOT revert on failure — they
+    return `success = false`. An unchecked result silently absorbs failure; if
+    state was updated before the call (claim flags, balances), the contract can
+    leak funds or grant privileges that were never paid for. Equivalent to
+    Slither's unchecked-lowlevel detector.
   recommendation: >
     Capture the success flag: `(bool ok, ) = addr.call{value: x}("");
     require(ok, "call failed");`. For pure ETH sends prefer
@@ -19,18 +19,18 @@ meta:
     - https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-low-level-calls
     - https://swcregistry.io/docs/SWC-104
 
-# If the call is the RHS of an assign (`(bool ok, ) = to.call(...)`) the
-# return is captured; downstream guard analysis is out of scope. If it
-# is inside require/assert/if/return, it's also considered handled.
+# The semantic boundary facts distinguish a standalone discarded result from a
+# captured result that has no proven later check. Returned, directly conditioned,
+# consumed, unavailable, and ambiguous results are intentionally outside this
+# detector.
 query:
   from: function
   select: lowlevel_call
   where:
-    - not:
-        in:
-          any:
-            - block: require
-            - block: assert
-            - block: if
-            - block: assign
-            - block: return
+    - any:
+        - and:
+            - boundary_result_disposition: ^discarded$
+            - boundary_result_checked: ^no$
+        - and:
+            - boundary_result_disposition: ^captured$
+            - boundary_result_checked: ^no$

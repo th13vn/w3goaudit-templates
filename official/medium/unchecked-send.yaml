@@ -1,15 +1,15 @@
 meta:
   id: MEDIUM-UNCHECKED-SEND
-  title: "Unchecked send() Return Value"
+  title: "Unchecked send() return value"
   severity: MEDIUM
   confidence: HIGH
   description: >
-    A call to `addr.send(amount)` is made but the boolean return value is
-    discarded. Unlike `.transfer()`, `.send()` does NOT revert on failure —
-    it returns `false`. Ignoring that return value means a failed transfer is
-    silently absorbed: caller state (balances, nonces, claim flags) may have
-    already been updated, leaving funds stranded. Equivalent to Slither's
-    unchecked-send detector.
+    A call to `addr.send(amount)` is made but its boolean return value is
+    discarded or captured without a proven check. Unlike `.transfer()`, `.send()`
+    does NOT revert on failure — it returns `false`. Ignoring that return value
+    means a failed transfer is silently absorbed: caller state (balances, nonces,
+    claim flags) may have already been updated, leaving funds stranded.
+    Equivalent to Slither's unchecked-send detector.
   recommendation: >
     Prefer `.call{value: amt}("")` with `require(success, ...)`, or wrap:
     `require(addr.send(amount), "send failed")`. Better: use a pull-payment
@@ -18,25 +18,21 @@ meta:
     - https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-send
     - https://swcregistry.io/docs/SWC-104
 
-# `call.builtin.send` has no dedicated WQL block-kind alias — only the broader
-# `eth_transfer` semantic group (transfer/send/lowlevel .call/asm.call). Since
-# only `.send(...)` calls carry the node name "send" among that group,
-# `select: eth_transfer` + `name: ^send$` narrows to exactly the same nodes.
+# `eth_transfer` is the semantic group for transfer, send, and low-level ETH
+# calls. The exact name narrows it to `.send(...)`.
 #
-# If the call is inside a guard, branch, assign, or return, the return
-# value is presumed handled. `stmt.assign` covers
-# `bool ok = to.send(amt);` — checking of `ok` is left to a downstream
-# rule and is not in scope here.
+# The semantic boundary facts distinguish a discarded result from a result that
+# is directly checked, returned, or consumed by another statement. A captured
+# result is reportable only when no later check is proven.
 query:
   from: function
   select: eth_transfer
   where:
     - name: ^send$
-    - not:
-        in:
-          any:
-            - block: require
-            - block: assert
-            - block: if
-            - block: assign
-            - block: return
+    - any:
+        - and:
+            - boundary_result_disposition: ^discarded$
+            - boundary_result_checked: ^no$
+        - and:
+            - boundary_result_disposition: ^captured$
+            - boundary_result_checked: ^no$

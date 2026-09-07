@@ -1,255 +1,329 @@
-# WQL Template Format Reference
+# WQL Template Format
 
-A WQL (w3goaudit Query Language) template is a single YAML file describing one
-vulnerability pattern. The `w3goaudit` engine loads every `*.yaml` under the
-template home, evaluates each rule against the parsed Solidity AST, and emits a
-finding for every match.
+WQL is W3GoAudit's deterministic rule language. A template describes one
+vulnerability mechanism and produces findings from Solidity semantic and AST
+evidence. Pack `v3.0.0` uses the WQL surface in W3GoAudit `v0.6.0` or newer.
 
-A template has exactly two top-level blocks:
-
-```yaml
-meta:    # metadata about the finding
-query:   # how the engine decides what to flag
-```
-
----
-
-## 1. The `meta` block
-
-`meta` carries everything the reporter needs and everything a triager reads.
-
-```yaml
-meta:
-  id: CRITICAL-DELEGATECALL-USER-INPUT                 # stable, unique identifier
-  title: Delegatecall to User-Controlled Address
-  severity: CRITICAL                # CRITICAL | HIGH | MEDIUM | LOW | INFO
-  confidence: HIGH                  # HIGH | MEDIUM | LOW
-  description: >
-    A delegatecall is executed with a target address that comes from a
-    function parameter (user-controlled). An attacker can pass a malicious
-    contract address, executing arbitrary code in this contract's context.
-  recommendation: >
-    Never delegatecall to user-supplied addresses. Maintain a whitelist of
-    trusted implementation addresses, or use a timelocked admin role.
-  references:                       # optional — SWC / EIP / advisory links
-    - https://swcregistry.io/docs/SWC-112
-```
-
-| Field | Required | Purpose |
-| --- | --- | --- |
-| `id` | yes | Unique key in the form `<SEVERITY>-<FILENAME>` (the upper-cased file name, e.g. `CRITICAL-DELEGATECALL-USER-INPUT`); appears in every finding and in `--include`/`--exclude` globs. |
-| `title` | yes | One-line summary shown in reports. |
-| `severity` | yes | Impact bucket — see [severity taxonomy](./severity-taxonomy.md). |
-| `confidence` | yes | How precise the rule is — see [severity taxonomy](./severity-taxonomy.md). |
-| `description` | recommended | What the pattern is and the risk it represents. |
-| `recommendation` | recommended | How to fix it. |
-| `references` | optional | External advisories / SWC entries / best-practice docs. The engine propagates these to every finding; all formatters surface them. |
-| `fix` | optional | Short one-line fix summary, surfaced by formatters alongside `recommendation`. |
-
-> **Classification (`cwe` / `owasp`):** the engine does **not** currently parse
-> or emit dedicated `cwe`/`owasp` meta fields — they are silently ignored. Until
-> they are supported, record any CWE / OWASP SC Top 10 classification as a
-> `references` entry. The [severity taxonomy](./severity-taxonomy.md) is an
-> authoring guide for *choosing* severity/confidence, not a list of emitted
-> fields.
-
----
-
-## 2. The `query` block
-
-`query` holds the matching logic. A simple query has three parts:
-
-```yaml
-query:
-  select: delegatecall   # (optional) the block kind whose match anchors the finding
-  from: entry_function   # scope to search (default: entry_function)
-  where:                 # list of matchers; siblings are implicit AND
-    - ...
-```
-
-`select`/`from`/`where` replace the older `scope`/`filter`/`match` split: a
-single flat `where` list carries both the function/contract preconditions and
-the AST code shapes, and each matcher is evaluated at the right layer
-automatically. See [§5](#5-composition--and--or) for the multi-query
-`and:` / `or:` forms.
-
-### 2.1 `select` — the finding anchor
-
-`select` names the single block kind ([§3](#3-block-kind-catalog)) whose matched
-node becomes the finding's anchor (`PrimaryAST`), e.g. `select: delegatecall`.
-
-`select` is **optional**. When omitted, `where` must already contain an
-actionable AST-level match evaluated at the scope root — a top-level
-`sequence:`, a root `has:`/`any:`/`and:` structure, or (with `from: source`) a
-single top-level `regex:`. A context-only `where` (just `func_name:`,
-`modifier:`, or a `preset:`) cannot anchor a finding and is a load error.
-A list `select: [a, b]` is rejected — use an `or:` composition instead.
-
-### 2.2 `from` — scope
-
-Selects which program units the rule iterates over.
-
-| `from` | Meaning |
-| --- | --- |
-| `entry_function` | Public/external state-mutating functions of deployable contracts; follows internal callees. **Default** when `from` is omitted. |
-| `function` | Every function everywhere. |
-| `contract` / `library` / `abstract` | Contract-kind-filtered contract scope. |
-| `main_contract` | Deployable contracts, evaluated against a synthetic contract AST built from the linearized inheritance chain (so one rule can span local and inherited functions). |
-| `any_contract` | Every contract/interface/library. |
-| `source` | Raw source-file text — regex-only (`where` holds one top-level `regex:`). |
-
-### 2.3 `where` — the matcher grammar
-
-`where` is a list of one-key matcher maps. Sibling items are implicit **AND**;
-matchers nest uniformly (a matcher's value may itself be a matcher map), and the
-same forms are legal at any depth. Empty matcher bodies are load errors.
-
-**Leaf matchers**
-
-- **`block: <kind>`** — node is of a given block kind or semantic group
-  ([§3](#3-block-kind-catalog)), e.g. `delegatecall`, `eth_transfer`,
-  `state_write`, `identifier`.
-- **`name: <regex>`** — identifier/call/function name (unanchored Go regex;
-  double-escape metacharacters: `"tx\\.origin"`).
-- **`preset: <name>`** — a named safety property ([§4](#4-presets)).
-- **`regex: <pattern>`** — raw text, line-scoped to the enclosing selected block.
-- **`tainted: <source>`** — value traces to `parameter`, `state_var`,
-  `local_var`, `sender`, or `user_controlled`.
-- **`<attribute>: <value>`** — a semantic attribute in bare-key form, e.g.
-  `visibility: public,external`, `operator: "=="`, `receiver: true`,
-  `is_state_var: true`, `receiver_name: ^this$`.
-
-**Structural & logic matchers**
-
-- **`has: <matcher>`** — some descendant matches. **`in: <matcher>`** — some
-  ancestor matches.
-- **`arg.N: <matcher>`** — the Nth (0-based) call argument matches.
-  **`arg.any: <matcher>`** — some positional argument matches (repeated
-  `arg.any` siblings are independent existential checks).
-- **`sequence: [<matcher>, ...]`** — ordered, same-execution-path occurrence
-  (e.g. external call *before* a state write — the classic reentrancy shape).
-- **`guarded_by: <matcher>`** — an inline guard or exact applied modifier
-  declaration matches.
-- **`left:` / `right:`** — operands of a binary/assignment/member node.
-- **`func_name:` / `modifier:` / `version:` / `has_param:` / `base:`** —
-  function/contract preconditions.
-- **`any: [...]`** (OR), **`and: [...]`** (explicit AND grouping),
-  **`not: <matcher>`** (negation). Repeated sibling `not:` items are independent
-  predicates: `not: A` plus `not: B` means `(not A) and (not B)`.
-
-Presets and `not:` are how you express a property's **absence** — e.g.
-`not: { preset: access_controlled }` matches functions lacking privileged
-access control. Each preset returns true when its property is *present*, so it
-reads naturally either asserted or negated.
-
----
-
-## 3. Block-kind catalog
-
-Common kinds usable in `select:` and as `block: <kind>` in `where`:
-
-| Group | Kinds |
-| --- | --- |
-| Calls | `call`, `external_call`, `internal_call`, `delegatecall`, `staticcall`, `lowlevel_call`, `create`, `eth_transfer`, `selfdestruct`, `builtin_transfer`, `builtin_send` |
-| Guards | `guard`, `require`, `assert`, `revert` |
-| State | `state_write` (assign / storage-array `push`·`pop` / state `delete`·`++`·`--` / `asm.sstore`), `state_read` |
-| Statements | `assign`, `if`, `loop`, `unchecked`, `return`, `emit`, `try_catch`, `block` |
-| Expressions | `identifier`, `literal`, `binary`, `unary`, `member`, `index`, `ternary`, `tuple` |
-| Declarations | `function`, `contract`, `modifier`, `variable`, `parameter` |
-| Assembly | `asm`, `asm_sstore`, `asm_sload`, `asm_delegatecall`, `asm_call`, `asm_staticcall`, `asm_create`, `asm_selfdestruct`, `asm_revert`, `asm_return` |
-
-Dot-notation groups match their family (`call` covers all `call.*`). The full
-catalog, attribute list, and taint model live in the engine reference at
+This guide is the approachable pack-facing reference. The complete engine
+grammar lives in
 [`w3goaudit/docs/wql-syntax.md`](https://github.com/th13vn/w3goaudit/blob/main/docs/wql-syntax.md).
 
----
+## 1. Document Shape
 
-## 4. Presets
-
-Each preset returns true when its named safety property is **present**, so use
-`not: { preset: ... }` to match the vulnerable (absent) case.
-
-| Preset (property = true) | Present when… |
-| --- | --- |
-| `access_controlled` | Privileged access control is present — an owner/admin/role modifier, an internal auth-helper call, or a `msg.sender`/`tx.origin` guard against a hardcoded/storage owner (checked recursively through internal/inherited calls). `require(from == msg.sender)` is item-ownership self-scoping, **not** privileged auth, so it does not clear this preset. |
-| `caller_checked` | Either the function is `access_controlled`, **or** it self-scopes the caller — binds a sensitive argument to `msg.sender` (`require(from == msg.sender)`), including the item-ownership form `ownerOf(tokenId) == msg.sender`. Use where binding a sensitive arg to the caller is a valid mitigation (e.g. arbitrary `transferFrom`). |
-| `reentrancy_guarded` | A reentrancy-guard modifier (`nonReentrant`/`lock`/`mutex`/etc.) is present. |
-
-Unknown preset names are rejected at load. Presets compose anywhere in `where`,
-including under `any:` / `not:`.
-
----
-
-## 5. Composition — `and:` / `or:`
-
-Instead of `select`/`from`/`where`, `query` may hold a one-level composition:
-
-- **`or:`** — a list of branches, each a full `{select, from, where}` query. The
-  engine runs each branch and unions the findings (deduplicating the same precise
-  site). Use for "shape A **or** shape B" detectors.
-- **`and:`** — a list of labeled branches that must all match in one shared
-  scope; each branch may carry a `label:` naming its site in the finding's
-  related context. Use for multi-site combination findings in one contract.
-
-`and:` and `or:` are mutually exclusive and cannot be combined with a top-level
-`select`/`from`/`where` in the same `query`.
-
----
-
-## 6. Worked example
-
-The reentrancy rule combines a function-level precondition with an ordered AST
-pattern in one flat `where`:
+A file has exactly two top-level blocks:
 
 ```yaml
 meta:
-  id: HIGH-REENTRANCY-PATTERN
-  title: Potential Reentrancy - State Variable Modification
+  id: HIGH-EXAMPLE
+  title: Example vulnerability mechanism
   severity: HIGH
   confidence: MEDIUM
   description: >
-    Detects functions where external calls occur before state variable updates.
-    Recursively traces through internal function calls to find external calls.
+    Explain the condition the query proves and the resulting risk.
   recommendation: >
-    Apply the Check-Effects-Interactions pattern (update state BEFORE external
-    calls) or use a ReentrancyGuard modifier.
-  references:
-    - https://swcregistry.io/docs/SWC-107
+    Explain a concrete mitigation.
+
+query:
+  from: entry_function
+  select: external_call
+  where:
+    - name: ^dangerousCall$
+```
+
+Unknown keys, YAML merge keys, empty matcher bodies, invalid regexes, unknown
+block kinds, and unsupported presets fail at load time. The scanner does not
+silently skip invalid templates unless the user explicitly enables lenient
+loading.
+
+## 2. Metadata
+
+| Field | Official pack | Meaning |
+|---|---|---|
+| `id` | Required | Stable `<SEVERITY>-<FILENAME>` identifier |
+| `title` | Required | Concise sentence-case summary |
+| `severity` | Required | `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, or `INFO` |
+| `confidence` | Required | `HIGH`, `MEDIUM`, or `LOW` |
+| `description` | Required | The exact proven condition and risk |
+| `recommendation` | Required | Actionable mitigation |
+| `references` | Optional | Standards, advisories, or documentation |
+| `fix` | Optional | Short remediation summary |
+
+The engine does not emit dedicated `cwe` or `owasp` fields. Use `references`
+when those classifications help the reader.
+
+## 3. Simple Query
+
+```yaml
+query:
+  from: entry_function
+  select: delegatecall
+  where:
+    - receiver:
+        tainted: user_controlled
+```
+
+- `from` chooses the units to evaluate. It defaults to `entry_function`.
+- `select` chooses the AST kind that anchors the finding.
+- `where` is a list of matchers combined with AND. It can mix scope
+  preconditions and AST or semantic evidence.
+
+`select` is optional only when the root `where` matcher provides actionable
+evidence, such as a sequence, structural `has`, or source regex. A context-only
+query cannot produce a useful finding and is rejected.
+
+### Common scopes
+
+| `from` | Evaluates |
+|---|---|
+| `entry_function` | Public or external state-mutating entry points, including reachable internal code |
+| `function` | Every function |
+| `main_contract` | Deployable contracts with linearized inherited members |
+| `contract` | Contract declarations |
+| `library` | Library declarations |
+| `abstract` | Abstract declarations |
+| `any_contract` | Contracts, interfaces, and libraries |
+| `source` | Whole source files for a root regex matcher |
+
+Inheritance, C3 linearization, virtual dispatch, and `super` dispatch are
+automatic. There is no `runtime` query option.
+
+## 4. Matchers
+
+Every item under `where` is a matcher map. Common leaf matchers are:
+
+| Matcher | Purpose |
+|---|---|
+| `block: <kind>` | Match an AST or semantic block kind |
+| `name: <regex>` | Match a node, call, or identifier name |
+| `regex: <regex>` | Match text within the current source scope |
+| `tainted: <source>` | Require provenance from a supported source |
+| `func_name: <regex>` | Restrict the enclosing function |
+| `modifier: <regex>` | Restrict applied modifier names |
+| `visibility: <list>` | Match one of comma-separated visibility values |
+| `mutability: <list>` | Match one of comma-separated mutability values |
+| `version: <constraint>` | Match the Solidity pragma range |
+| `preset: ...` | Apply a named safety or lifecycle property |
+| `<attribute>: <regex>` | Match a documented semantic attribute |
+
+Supported taint sources include `parameter`, `state_var`, `local_var`, `sender`,
+and `user_controlled`. `user_controlled` includes parameters and caller identity
+that the engine can prove.
+
+### Structure and logic
+
+```yaml
+- has:
+    block: state_write
+- in:
+    block: unchecked
+- arg.0:
+    tainted: parameter
+- any:
+    - block: builtin_send
+    - block: lowlevel_call
+- not:
+    preset: reentrancy_guarded
+```
+
+| Matcher | Purpose |
+|---|---|
+| `has` | Some descendant matches |
+| `in` | Some ancestor matches |
+| `arg.N` | Positional argument `N` matches |
+| `arg.any` | Some positional argument matches |
+| `left`, `right` | Direct operand matches |
+| `receiver` | The call's direct receiver matches a nested rule |
+| `sequence` | Ordered same-execution-path evidence |
+| `guarded_by` | Inline guard or exact applied modifier body matches |
+| `any` | OR over matcher alternatives |
+| `and` | Explicit matcher-level AND |
+| `not` | Negate one matcher |
+| `unchecked_var:` | Presence-only unchecked arithmetic predicate |
+
+`receiver` takes a nested matcher, not a Boolean:
+
+```yaml
+- receiver:
+    tainted: user_controlled
+```
+
+`unchecked_var` is written as a presence-only marker:
+
+```yaml
+- unchecked_var:
+```
+
+Do not write `receiver: true` or `unchecked_var: true`. Use nested options or
+presence syntax.
+
+## 5. Direct Semantic Presets
+
+Presets are positive properties. Wrap a preset in `not:` to find its absence.
+
+### Protected authorization
+
+```yaml
+- preset:
+    authorization:
+      type: protected
+      principal: [owner, pair, pool]
+```
+
+`principal` is optional. It may be one string, a non-empty list of OR
+alternatives, or an explicit regex option:
+
+```yaml
+- preset:
+    authorization:
+      type: protected
+      principal: {regex: '(?i)^(owner|admin|governor)$'}
+```
+
+Literal principals are trimmed, deduplicated, sorted, and matched as complete
+values. A positive match requires proven dominating authorization through exact
+modifier, helper, state-principal, role, and inherited dispatch evidence. A
+generic result check such as `require(ok)` is not authorization.
+
+### Caller self-scoping
+
+```yaml
+- preset:
+    authorization:
+      type: self_sender
+```
+
+Use `self_sender` when any caller may act only on that caller's own resource. It
+does not accept `principal`.
+
+### Initializer first-call takeover
+
+```yaml
+- func_name: '(?i)^(initialize|initialise|init|__init|setup)$'
+- preset:
+    initializer:
+      takeover: possible
+```
+
+The function regex narrows the intended entries. The preset then requires
+positive first-call takeover evidence. Constructor disabling, one-time mutex,
+proxy linkage, deployment authority, and atomicity remain internal facts and
+are not template attributes.
+
+### Reentrancy guard
+
+```yaml
+- not: {preset: reentrancy_guarded}
+```
+
+The engine proves a mutex from an applied modifier body when possible. A name is
+only a fallback when the body cannot be resolved.
+
+There are no raw authorization or lifecycle attributes, runtime syntax,
+candidate pack, compatibility mapping, or authored `unknown` value. Missing or
+ambiguous positive evidence fails closed.
+
+## 6. Semantic Attributes
+
+Most detectors use ordinary AST structure. Semantic attributes refine nodes
+when the mechanism requires stronger evidence. Important v0.6.0 families are:
+
+### External result handling
+
+```yaml
+- any:
+    - and:
+        - boundary_result_disposition: ^discarded$
+        - boundary_result_checked: ^no$
+    - and:
+        - boundary_result_disposition: ^captured$
+        - boundary_result_checked: ^no$
+```
+
+This reports discarded and captured-but-unchecked results. Checked, returned,
+consumed, unavailable, or ambiguous evidence does not satisfy the detector. An
+assignment by itself is not a safety proof.
+
+### Transaction-context accounting
+
+```yaml
+- has:
+    attr:
+      transaction_context_source: ^msg_value$
+      transaction_context_use: ^(state_write|call_value|stateful_internal_call)$
+      transaction_context_repeatability: ^possible$
+```
+
+This requires a proven repeatable transaction-level `msg.value` effect. A read
+in an event, condition, local, return, or ordinary external argument is not
+enough.
+
+Use the engine reference for the full block-kind and attribute catalogs. Unknown
+attribute names fail at load.
+
+## 7. Query Composition
+
+A query may use one-level `or:` or `and:` instead of a simple query.
+
+Use `or:` when alternative shapes should emit the same detector ID:
+
+```yaml
+query:
+  from: entry_function
+  or:
+    - select: selfdestruct
+      where:
+        - not: {preset: {authorization: {type: protected}}}
+    - select: delegatecall
+      where:
+        - receiver: {tainted: user_controlled}
+```
+
+Use labeled `and:` branches when several contributing sites must exist in one
+shared scope. Each positive branch needs actionable evidence. Query composition
+cannot be mixed with top-level `select` or `where` in the same query.
+
+## 8. Complete Example
+
+```yaml
+meta:
+  id: HIGH-UNPROTECTED-INITIALIZER
+  title: Unprotected initializer
+  severity: HIGH
+  confidence: HIGH
+  description: >
+    An initializer entry can be claimed by its first caller and writes state.
+  recommendation: >
+    Apply a one-time initializer guard and restrict deployment initialization.
 
 query:
   from: entry_function
   where:
-    # true when the function has NO reentrancy guard — exactly the case to scan
-    - not: { preset: reentrancy_guarded }
-    # external call followed by a state write
-    - sequence:
-        - block: eth_transfer   # .transfer / .send / .call{value:} / raw .call / asm.call
-        - block: state_write
+    - func_name: '(?i)^(initialize|initialise|init|__init|setup)$'
+    - preset:
+        initializer:
+          takeover: possible
+    - not:
+        preset:
+          authorization:
+            type: protected
+    - has:
+        block: state_write
 ```
 
-How the engine reads this:
+The regex identifies initializer intent. The lifecycle preset proves that the
+first caller can take over. The authorization preset excludes independently
+protected entries. The state-write matcher supplies concrete vulnerability
+evidence and an actionable anchor.
 
-1. `from: entry_function` → iterate externally reachable functions.
-2. `not: { preset: reentrancy_guarded }` → keep only functions with no guard.
-3. `sequence` → find an ETH-bearing or raw low-level call that occurs **before** a
-   state write. Its first step is the finding anchor.
-4. On a match, emit a finding carrying the `meta` (severity, description,
-   recommendation, references).
+## 9. Authoring Checklist
 
-`delegatecall` is deliberately absent (since v2.1.1). It executes the callee's
-bytecode in the caller's own context — same storage, same guard slot — so re-entry
-through it is not attacker-injected reentry, and real targets are trusted, admin-set
-sidecars or `address(this)`. An attacker-influenced delegatecall target is arbitrary
-code execution, which `CRITICAL-DELEGATECALL-USER-INPUT` reports instead.
-
----
-
-## 7. Authoring checklist
-
-- [ ] Unique, stable `id` of the form `<SEVERITY>-<FILENAME>` (upper-cased file name); the file lives in the matching `official/<severity>/` folder.
-- [ ] `severity` and `confidence` justified and consistent with peers.
-- [ ] Preconditions and code shapes both live in one flat `where` (or an `and:`/`or:` composition); the engine routes each matcher to the right layer.
-- [ ] `select` present, or an actionable root matcher (`sequence:`/`has:`/`any:`/root `regex:`) so the finding can anchor.
-- [ ] Rule fires on a vulnerable fixture and is silent on a safe one.
-- [ ] `references` set where a canonical advisory exists (SWC / EIP / Slither).
-- [ ] Non-obvious FP/TP trade-offs documented in YAML comments.
+- The ID, filename, folder, and severity agree.
+- Metadata says only what the query proves.
+- The finding has a precise actionable anchor.
+- Semantic evidence is preferred over names and raw source patterns.
+- Vulnerable and safe fixtures are present.
+- Ambiguous and unresolved evidence fails closed.
+- Repeated source and cached-database scans agree.
+- `AI.md`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, and relevant docs are
+  updated.
+- The downloadable and embedded `official/` trees are byte-identical.

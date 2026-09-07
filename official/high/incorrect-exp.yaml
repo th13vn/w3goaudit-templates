@@ -1,6 +1,6 @@
 meta:
   id: HIGH-INCORRECT-EXP
-  title: "Suspicious Use of ^ (Bitwise XOR, Likely Meant **)"
+  title: "Suspicious use of ^ (bitwise XOR, likely meant **)"
   severity: HIGH
   confidence: MEDIUM
   description: >
@@ -26,7 +26,6 @@ meta:
 query:
   from: function
   select: binary
-
   where:
     # Flag `^` only when it looks like exponentiation, not bit manipulation:
     #   1. both operands are simple values — an identifier or a DECIMAL number
