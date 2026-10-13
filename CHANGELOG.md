@@ -3,9 +3,34 @@
 All notable changes to the official w3goaudit template pack are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [v3.0.1] - 2026-10-13
 
-No changes yet.
+Precision patch paired with W3GoAudit v0.7.0. The pack keeps the same 20
+detector IDs, but raises the engine floor to v0.7.0 for the new
+intentional_divide_rounding matcher. An older engine cannot load the whole pack.
+The official YAML rules are synchronized
+with the engine's precision round: 416 to 208 findings on the reconstructed real
+corpus while retaining all five confirmed findings. The embedded fallback in
+the paired core release is byte-identical. Private candidate and incident lanes
+remain outside this repository and this release.
+
+### Changed
+
+- Narrowed incorrect exponentiation, initializer, strict equality, reentrancy,
+  delegatecall, arbitrary-call, arithmetic, divide-before-multiply, tx.origin,
+  encode-packed, ERC20 arity, and unchecked low-level-call rules using semantic
+  controls and corpus regressions.
+- Excluded exact-output Uniswap V2 pair swaps from the router slippage check.
+- Lowered confidence where the measured remaining matches are still
+  context-dependent. Severity and detector IDs are unchanged.
+
+### Companion engine upgrade
+
+`w3goaudit --update-templates` installs these YAML changes only. Upgrade the
+binary to v0.7.0 for library-aware call-result checks, helper taint and
+authorization evidence, caller locations, legacy Solidity parser repairs, and
+Foundry/Certora source-discovery controls. The official fixture gate remains 81
+findings and the competitive engine gate remains 109 TP / 40 FP / 0 FN.
 
 ## [v3.0.0] - 2026-09-07
 
@@ -336,6 +361,7 @@ Initial public release of the official WQL template pack — **25 templates**.
 - `SEC-BOOL-001` — Boolean Constant Misuse (MEDIUM)
 - `SEC-MUTABILITY-001` — view/pure Function Modifies State (MEDIUM)
 
+[v3.0.1]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v3.0.1
 [v3.0.0]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v3.0.0
 [v2.1.1]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v2.1.1
 [v2.1.0]: https://github.com/th13vn/w3goaudit-templates/releases/tag/v2.1.0

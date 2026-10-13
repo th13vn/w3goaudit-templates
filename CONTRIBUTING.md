@@ -5,8 +5,8 @@ Thank you for improving the official security rule pack for
 the number of warnings. The goal is to encode vulnerability mechanisms with
 evidence that an auditor can verify quickly.
 
-Pack `v3.0.0` requires W3GoAudit `v0.6.0` or newer. Use the current engine when
-validating a rule.
+Pack `v3.0.1` requires W3GoAudit `v0.7.0` or newer. Use the paired W3GoAudit
+`v0.7.0` engine when validating a rule.
 
 ## 1. Template Shape
 

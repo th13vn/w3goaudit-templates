@@ -8,9 +8,9 @@ The official deterministic **WQL** security rule pack for
 [`w3goaudit`](https://github.com/th13vn/w3goaudit), a Go static-analysis engine
 for Solidity smart contracts.
 
-> Pack `v3.0.0` requires W3GoAudit `v0.6.0` or newer. Upgrade the engine before
-> installing this pack because its authorization, initializer, external-result,
-> and transaction-context predicates depend on v0.6.0 semantic evidence.
+> Pack `v3.0.1` requires W3GoAudit `v0.7.0` or newer. Upgrade the engine before
+> installing this pack. The intentional_divide_rounding semantic matcher is
+> unavailable in older engines, which reject the whole pack at load time.
 
 The trusted pack contains **20 evidence-backed detectors**: 2 critical, 10 high,
 and 8 medium. Version 3 deliberately removes weakly evidenced and
@@ -24,7 +24,7 @@ mechanisms.
 Install the engine:
 
 ```bash
-go install github.com/th13vn/w3goaudit/cmd/w3goaudit@v0.6.0
+go install github.com/th13vn/w3goaudit/cmd/w3goaudit@v0.7.0
 ```
 
 The first scan downloads the latest release of this repository into

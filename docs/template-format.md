@@ -2,7 +2,7 @@
 
 WQL is W3GoAudit's deterministic rule language. A template describes one
 vulnerability mechanism and produces findings from Solidity semantic and AST
-evidence. Pack `v3.0.0` uses the WQL surface in W3GoAudit `v0.6.0` or newer.
+evidence. Pack `v3.0.1` uses the WQL surface in W3GoAudit `v0.7.0` or newer.
 
 This guide is the approachable pack-facing reference. The complete engine
 grammar lives in

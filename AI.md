@@ -13,7 +13,7 @@ or structural evidence. Unsupported protocol-specific or weakly evidenced
 detectors are deferred rather than approximated with broad names or source
 regexes.
 
-Pack `v3.0.0` requires W3GoAudit `v0.6.0` or newer. The current inventory is
+Pack `v3.0.1` requires W3GoAudit `v0.7.0` or newer. The current inventory is
 **20 detectors**: 2 critical, 10 high, and 8 medium.
 
 ## Repository Map
@@ -121,8 +121,9 @@ ordinary regex or structured options when a detector needs refinement.
 
 - Release tags use `vX.Y.Z`. Removing or renaming detector IDs requires a major
   release.
-- Pack `v3.0.0` is paired with core `v0.6.0` and must be published only after
-  that engine release exists.
+- Pack `v3.0.1` is paired with core `v0.7.0` and must be published only after
+  that engine release exists. It uses intentional_divide_rounding, a new matcher
+  unavailable in v0.6.0.
 - Before release, `official/` here and `w3goaudit/templates/official/` must be
   byte-identical. Never publish only one distribution channel.
 - The W3GoAudit engine is the validator. Run official-pack tests, source/cache
